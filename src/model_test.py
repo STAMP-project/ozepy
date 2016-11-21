@@ -52,7 +52,7 @@ class TestModelCreation(unittest.TestCase):
         )
 
         self._assert_expr_in_string(
-            self.DockerImage.all_instances().forall(x, x['mem'] > 0),
+            self.DockerImage.forall(x, x['mem'] > 0),
             'ForAll(x,Implies(And(alive(x),is_instance(x,DockerImage)),mem(x)>0))'
         )
 
@@ -64,13 +64,13 @@ class TestModelCreation(unittest.TestCase):
         # expr = self.DockerImage.all_instances().map(x, x['deploy']).forall(y, y.alive())
         # print expr
         self._assert_expr_in_string(
-            self.DockerImage.all_instances().map(x, x['deploy']).forall(y, y.alive()),
+            self.DockerImage.map(x, x['deploy']).forall(y, y.alive()),
             'ForAll(x,Implies(And(alive(x),is_instance(x,DockerImage)),alive(deploy(x))))'
         )
 
         # print self.DockerImage.all_instances().map(x, x['deploy']).forall(y, y.has_type(self.Vm))
         self._assert_expr_in_string(
-            self.DockerImage.all_instances().map(x, x['deploy']).forall(y, y.isinstance(self.Vm)),
+            self.DockerImage.map(x, x['deploy']).forall(y, y.isinstance(self.Vm)),
             'ForAll(x,Implies(And(alive(x),is_instance(x,DockerImage)),is_instance(deploy(x),Vm)))'
         )
 
@@ -124,6 +124,28 @@ class TestModelCreation(unittest.TestCase):
         print result
         pprint.pprint(result)
         self.assertEqual(10, result['vm1']['vmem'])
+
+    def test_sum(self):
+        ubuntu1 = DefineObject('ubuntu1', self.Ubuntu)
+        vm1 = DefineObject('vm1', self.Vm, suspended=True)
+
+        di1 = DefineObject('di1', self.DockerImage, suspended=True)
+
+        generate_config_constraints()
+
+        x = declare_obj_var(self.DockerImage, 'x')
+        y = declare_obj_var(self.Vm, 'y')
+
+        self._assert_expr_in_string(
+            self.Vm.forall(y, y['host'].map(x, x['mem']).sum() <= y['vmem']),
+            'ForAll(y,\
+                   Implies(And(alive(y), is_instance(y, Vm)),\
+                           If(host(y, di1), mem(di1), 0) +\
+                           If(host(y, ubuntu1), mem(ubuntu1), 0) <=\
+                           vmem(y)))'
+        )
+
+        print self.Vm.exists(y, y['host'].count() < 2)
 
     def test_supertypes(self):
         # self.assertEqual(True, get_ancestors(self.Nimbus))

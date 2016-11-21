@@ -112,6 +112,28 @@ class Class(ConsolasElement):
     def __repr__(self):
         return self.name
 
+    def forall(self, var, expr):
+        return self.all_instances().forall(var, expr)
+
+    def exists(self, var, expr):
+        return self.all_instances().exists(var, expr)
+
+    def otherwise(self, var, expr):
+        return self.all_instances().exists(var, expr)
+
+    def map(self, var, expr):
+        return self.all_instances().map(var, expr)
+
+    def filter(self, var, cond):
+        return self.all_instances().filter(var, cond)
+
+    def join(self, other):
+        _consolas_assert(isinstance(other, Class), 'a class can only join to another class')
+        return self.all_instances().join(other.all_instances())
+
+    def __mul__(self, other):
+        return self.join(other)
+
 class CompositeClass(Class):
 
     def __init__(self, *types):
@@ -218,6 +240,14 @@ class Object(ConsolasElement):
                     result.append(str(obj))
             return result
         return None
+
+    def isinstance_by_decl(self, type_):
+        current = self.type
+        while current:
+            if current == type_:
+                return True
+            current = current.supertype
+        return False
 
     def __str__(self):
         return self.name
@@ -402,9 +432,13 @@ class SetExpr(ConsolasExpr):
         _consolas_assert(not isinstance(expr, SetExpr), 'Do not support a set of sets')
         _consolas_assert(not isinstance(var, list),
                          'map only works on simple sets. So please do mapping before joining')
-
-        seed = PartialExpr(var, expr.z3())
-        return SetExpr(self.guard, expr.type, seed)
+        if isinstance(expr, ConsolasExpr):
+            type_ = expr.type
+            expr = expr.z3()
+        else:
+            type_ = None
+        seed = PartialExpr(var, expr)
+        return SetExpr(self.guard, type_, seed)
 
     def filter(self, var, cond):
         _consolas_assert(
@@ -431,6 +465,31 @@ class SetExpr(ConsolasExpr):
         new_seed.append(other.seed)
 
         return SetExpr(new_guard, new_type, new_seed)
+
+    def sum(self):
+        _consolas_assert(not isinstance(self.guard, list), 'Sum only works on a simple set')
+        _consolas_assert(
+            _config_constraints,
+            'Sum can be only used after all objects are defined and the object constraints are generated'
+        )
+        var = self.guard.get_one_var()
+        value = self.seed.bindOne(var).complete()
+        item = If(self.guard.z3_element, value, 0)
+        return Sum([substitute(item, (var.z3(), x.z3()))
+                    for x in _all_objects.values()
+                    if x.isinstance_by_decl(var.type)])
+
+    def count(self):
+        _consolas_assert(not isinstance(self.guard, list), 'Count only works on a simple set')
+        _consolas_assert(
+            _config_constraints,
+            'Count can be only used after all objects are defined and the object constraints are generated'
+        )
+        var = self.guard.get_one_var()
+        item = If(self.guard.z3_element, 1, 0)
+        return Sum([substitute(item, (var.z3(), x.z3()))
+                    for x in _all_objects.values()
+                    if x.isinstance_by_decl(var.type)])
 
     def __mul__(self, other):
         return self.join(other)
@@ -492,6 +551,7 @@ def start_over():
     """
     _all_vars.clear()
     _all_classes.clear()
+    _all_objects.clear()
     del _meta_constraints[:]
     del _config_constraints[:]
 
