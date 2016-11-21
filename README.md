@@ -82,3 +82,4 @@ print result
 
 # TODO:
 - Intersect, Union
+- De-Quantifier! Z3-Optimize does not seem to support Quantifier yet!!!
