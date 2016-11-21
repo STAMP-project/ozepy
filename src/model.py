@@ -144,7 +144,6 @@ class CompositeClass(Class):
         lst.append(type)
         return CompositeClass(*lst)
 
-
 class Feature(ConsolasElement):
 
     def __init__(self, name, parent, type, multiple=False, mandatory=False):
@@ -513,6 +512,44 @@ def DefineClass(name, supertype=None, abstract=False):
     return class_
 
 
+def load_class_head(desc):
+    desc = desc.copy()
+    desc.pop('reference', None)
+    desc.pop('attribute', None)
+    if 'supertype' in desc:
+        supertype = desc['supertype']
+        _consolas_assert(supertype in _all_classes, 'supertype %s not defined' % supertype)
+        desc['supertype'] = _all_classes[supertype]
+    return DefineClass(**desc)
+
+def _resolve_type(type_):
+    if type_ in _all_classes:
+        return _all_classes[type_]
+    elif type_ == 'Integer':
+        return IntSort()
+    elif type_ == 'Boolean':
+        return BoolSort()
+    _consolas_assert(False, 'type %s not defined' % type_)
+
+def load_class_body(desc):
+    name = desc['name']
+    _consolas_assert(name in _all_classes, 'class %s not defined' % name)
+    class_ = _all_classes[name]
+    for ref in desc.get('reference', []):
+        ref['type'] = _resolve_type(ref['type'])
+        class_.define_reference(**ref)
+    for attr in desc.get('attribute', []):
+        attr['type'] = _resolve_type(attr['type'])
+        class_.define_attribute(**attr)
+    return class_
+
+
+def load_all_classes(descs):
+    classes = [load_class_head(x) for x in descs]
+    for x in descs:
+        load_class_body(x)
+    return classes
+
 def DefineObject(name, type, suspended=False):
     _consolas_assert(not (name in _all_objects), 'Object name "%s" is already used' % name)
 
@@ -520,6 +557,8 @@ def DefineObject(name, type, suspended=False):
     _all_objects[name] = object_
     return object_
 
+def DefineObjects(names, type, suspended=False):
+    return [DefineObject(name, type, suspended) for name in names]
 
 def get_ancestors(clazz):
     result = []

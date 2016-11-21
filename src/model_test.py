@@ -147,6 +147,37 @@ class TestModelCreation(unittest.TestCase):
 
         print self.Vm.exists(y, y['host'].count() < 2)
 
+    def test_load_class(self):
+        start_over()
+        DockerImageDesc = {
+            'name': 'DockerImage',
+            'attribute': [{'name': 'mem', 'type':'Integer'}],
+            'reference': [{'name': 'deploy', 'type': 'Vm', 'mandatory': True}]
+        }
+
+        UbuntuDesc = {
+            'name': 'Ubuntu',
+            'supertype': 'DockerImage'
+        }
+
+        VmDesc ={
+            'name': 'Vm',
+            'abstract' : True,
+            'attribute': [{'name': 'vmem', 'type': 'Integer'}],
+            'reference': [{'name': 'host', 'multiple': True, 'type': 'DockerImage'}]
+        }
+
+        DockerImage, Ubuntu, Vm = load_all_classes([DockerImageDesc, UbuntuDesc, VmDesc])
+
+        self.assertEqual(IntSort(), Vm.get_feature('vmem').type)
+        print Ubuntu.get_feature('mem').mandatory
+        self.assertTrue(DockerImage.get_feature('deploy').mandatory)
+        self._assert_onevar_expr_in_pattern(
+            declare_obj_var(Ubuntu, 'ubuntu')['deploy']['host'],
+            '[([{0}] | host(deploy(ubuntu), {0}))]'
+        )
+
+
     def test_supertypes(self):
         # self.assertEqual(True, get_ancestors(self.Nimbus))
         self.assertEqual([self.Ubuntu, self.DockerImage], get_ancestors(self.Nimbus))
@@ -157,10 +188,9 @@ class TestModelCreation(unittest.TestCase):
     def _assert_onevar_expr_in_pattern(self, expr, pattern):
         varstr = self._extractTempleVar(str(expr))
         self.assertEqual(
-            pattern.format(varstr),
+            ''.join(pattern.format(varstr).split()),
             ''.join(str(expr).split())
         )
-
 
 
 if __name__ == '__main__':
