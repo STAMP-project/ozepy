@@ -21,6 +21,7 @@ class TestModelCreation(unittest.TestCase):
         self.DockerImage.define_reference('deploy', self.Vm, mandatory=True)
         self.Vm.define_reference('host', self.DockerImage, multiple=True, opposite='deploy')
         self.Vm.define_attribute('vmem', IntSort())
+        self.Vm.define_attribute('price', IntSort())
         self.DockerImage.define_attribute('port', IntSort())
 
     def test_newclass(self):

@@ -1,21 +1,67 @@
 # consolas
-Z3 front-end on object-oriented systems - an Alloy-like modeller, but on an SMT solver!
+Z3 front-end on object-oriented systems - an Alloy-like modeller, but on an SMT solver! Woring with Z3-4.5.0 and above
 
-# Modeling and constraint definition
+# Meta-model definition
 
-```Python
+A meta-model is defined as a set of classes. We allow the definition of classes using the core concepts from MOF standard, 
+i.e., class, attribute, reference and single inheritance.
+
+Classes can be defined inline:
+
+```python
 from z3 import *
 
-DockerImage = Class('DockerImage')
+DockerImage = Class('DockerImage') # class
 Vm = Class('Vm')
-DockerImage.define_attribute('mem', IntSort())
-DockerImage.define_reference('deploy', Vm)
-Vm.define_reference('host', DockerImage, True)
+DockerImage.define_attribute('mem', IntSort()) # attribute, using primitive Z3 sorts
+DockerImage.define_reference('deploy', Vm, mandatory=True) # reference, default as single valued
+Vm.define_reference('host', DockerImage, multiple=True) #multi-valued, not mandatory
 Vm.define_attribute('vmem', IntSort())
+Vm.define_attribute('price', IntSort())
+```
+
+Or loaded from a dictionary.
+
+```python
+
+classes_yaml = """
+-
+  name: DockerImage
+  attribute: [{name: mem, type: Integer}]
+  reference: [{name: deploy, type: Vm, mandatory: true}]
+-
+  name: Ubuntu
+  supertype: DockerImage
+-
+  name: Nimbus
+  supertype: Ubuntu
+-
+  name: Vm
+  abstract: True
+  attribute: [{name: vmem, type: Integer}, {name: price, type: Integer}]
+  reference: [{name: host, type: DockerImage, multiple: true, opposite: deploy}]
+-
+  name: LargeVm
+  supertype: Vm
+-
+  name: SmallVm
+  supertype: Vm
+"""
+
+classes = yaml.load(classes_yaml)
+DockerImage, Ubuntu, Nimbus, Vm, LargeVm, SmallVm = load_all_classes(classes)
+```
+
+# Constraint definition
+
+Z3 provides an elegant python-based domain-specific language, the Z3Py, to write SMT constraints. 
+The idea of Consolas is to enjoy all the expression power of Z3Py, but extending it with OO conventions.
+
+```Python
 
 d1 = ObjectConst('d1', DockerImage)
-x = DeclareTempObjVar(DockerImage, 'x')
-y = DeclareTempObjVar(Vm, 'y')
+x = declare_obj_var(DockerImage, 'x')
+y = declare_obj_var(Vm, 'y')
 
 print d1['deploy']['host'].contains(d1)
 #> host(deploy(d1), d1)
@@ -45,7 +91,7 @@ print all_di.join(all_di).forall([x1, x2], Implies(x1['port']==x2['port'], x1 ==
 ```python
 # Meta-model definition is the same as above
 
-solver = Solver()
+solver = Solver() #Summon the Z3 Solver
 
 # general meta-level constraints
 solver.add(generate_meta_constraints())
@@ -80,6 +126,6 @@ print result
 
 ```
 
-# TODO:
-- Intersect, Union
-- De-Quantifier! Z3-Optimize does not seem to support Quantifier yet!!!
+# Optimization
+
+A simple example can be found [here](https://github.com/SINTEF-9012/consolas/blob/72a198261a8dc3b794302d34c7315b56bebd1ba9/examples/docker-vm.py)

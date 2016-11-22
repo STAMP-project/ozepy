@@ -594,6 +594,11 @@ def start_over():
     del _meta_constraints[:]
     del _config_constraints[:]
 
+##############################################
+#
+# Automatic constraint generationg
+#
+###############################################
 
 def meta_fact(constraint):
     _meta_constraints.append(constraint)
@@ -602,6 +607,11 @@ def meta_fact(constraint):
 def config_fact(constraint):
     _config_constraints.append(constraint)
 
+def get_all_meta_facts():
+    return list(_meta_constraints);
+
+def get_all_config_facts():
+    return list(_config_constraints);
 
 def generate_meta_constraints():
     del _meta_constraints[:]
@@ -620,7 +630,7 @@ def generate_meta_constraints():
                   (x.supertype.z3() if x.supertype else NilType)
                   for x in _all_classes.values()]
                   ))
-    meta_fact(ForAll([t1, t2], is_subtype(t1, t2) == Or(super_type(t1)==t2, Exists(t3, And(super_type(t1)==t3, is_subtype(t3, t2))))))
+    meta_fact(ForAll([t1, t2], is_subtype(t1, t2) == Or(super_type(t1) == t2, Exists(t3, And(super_type(t1)==t3, is_subtype(t3, t2))))))
     meta_fact(ForAll([t1, i1], is_instance(i1, t1) == Or(actual_type(i1) == t1, is_subtype(actual_type(i1), t1))))
     meta_fact(ForAll(t1, Implies(is_subtype(NilType, t1), t1 == NilType)))
     meta_fact(ForAll(i1, Or(Not(alive(i1)), Or([actual_type(i1) == x for x in all_class_z3]))))
@@ -689,6 +699,23 @@ def generate_config_constraints():
     return _config_constraints
 
 
+######################################################
+#
+# De-Quantifier
+#
+######################################################
+
+
+def de_quantifer_single(expr):
+    _consolas_assert(isinstance(expr, QuantifierRef), "De-Quantifier only works on quantifiers")
+
+
+######################################################
+#
+# Converting constraint solving results to readable models
+#
+########################################################
+
 def cast_object(object_, model):
     result = {}
     result['name'] = object_.name
@@ -697,7 +724,7 @@ def cast_object(object_, model):
     result['type'] = None
     for class_ in _all_classes.values():
         if str(model.eval(actual_type(object_.z3()) == class_.z3())) == 'True':
-            result['type'] = class_
+            result['type'] = str(class_)
             break
 
 
@@ -711,8 +738,9 @@ def cast_all_objects(model):
     result = {}
     for object_ in _all_objects.values():
         v = cast_object(object_, model)
-        result[v['name']] = v
-
+        if v['alive']:
+            result[v['name']] = v
     return result
+
 
 
