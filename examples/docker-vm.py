@@ -47,7 +47,7 @@ optimizer.add(generate_meta_constraints())
 optimizer.add(LargeVm.forall(y, y['vmem'] == 16))
 optimizer.add(LargeVm.forall(y, y['price'] == 20))
 optimizer.add(SmallVm.forall(y, y['vmem'] == 4))
-optimizer.add(SmallVm.forall(y, y['price'] == 2))
+optimizer.add(SmallVm.forall(y, y['price'] == 4))
 optimizer.add(Nimbus.forall(x, x['mem'] == 3))
 
 # Define Objects. The five VMs are "suspended", which means that they may not be instantiated in

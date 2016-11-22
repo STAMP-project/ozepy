@@ -18,7 +18,7 @@ def _consolas_assert(cond, msg):
         raise ConsolasException(msg)
 
 
-# Now begins the definition of predefined Sorts and functions
+# Here begins the definition of predefined Sorts and functions
 
 _Type = DeclareSort('Type')
 _Inst = DeclareSort('Inst')
@@ -29,7 +29,6 @@ NilType = Const('NilType', _Type)
 nil = Const('nil', _Inst)
 
 super_type = Function('super', _Type, _Type)
-
 actual_type = Function('actual_type', _Inst, _Type)
 
 is_subtype = Function('is_subtype', _Type, _Type, BoolSort())
@@ -49,6 +48,12 @@ class ConsolasElement:
         """Convert a Consolas Element to a Z3 expression"""
         return self.z3_element
 
+
+##############################################################
+#
+# Definition of meta-model
+#
+##############################################################
 
 
 class Class(ConsolasElement):
@@ -71,6 +76,16 @@ class Class(ConsolasElement):
         self.abstract = abstract
 
     def define_attribute(self, name, type, multiple=False):
+        """
+        Attributes are in primitive z3 types
+
+        >>> DockerImage.define_attribute('mem', IntSort())
+
+        :param name: attribute name
+        :param type: primitive z3 types (IntSort(), BoolSort()), and Enum (not supported yet)
+        :param multiple:
+        :return:
+        """
         self.attributes[name] = Attribute(name, self, type, multiple, mandatory=True)
 
     def define_reference(self, name, type, multiple=False, mandatory=False, opposite=None):
