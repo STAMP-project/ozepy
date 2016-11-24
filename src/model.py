@@ -104,7 +104,7 @@ class Class(ConsolasElement):
                 return None
 
     def all_instances(self):
-        var = declare_obj_var(self)
+        var = ObjectVar(self)
         return SetExpr(PartialExpr(var, And(alive(var.z3()), is_instance(var.z3(), self.z3()))), self)
 
     def compose_new_class(self, type):
@@ -301,7 +301,7 @@ class ObjectExpr(ConsolasExpr):
 
         if feature.multiple:
             _consolas_assert(isinstance(_range, Class), "No support of multiple attributes")
-            var = declare_obj_var(_range)
+            var = ObjectVar(_range)
             guard = PartialExpr(var, z3fun(self.z3(), var.z3()))
             return SetExpr(guard, _range)
         elif isinstance(feature, Reference):
@@ -402,7 +402,7 @@ class SetExpr(ConsolasExpr):
 
         # _consolas_assert(not isinstance(self.guard, list), 'check single item in multi-dimension set')
         if self.seed:
-            v = declare_obj_var(self.type)
+            v = ObjectVar(self.type)
             return self.exists(v, v == item)
         else:
             return self.guard.bindOne(item).complete()
@@ -584,7 +584,7 @@ def get_ancestors(clazz):
     return result
 
 
-def declare_obj_var(_type, id=None):
+def ObjectVar(_type, id=None):
     if id:
         _consolas_assert(not (id in _all_vars), 'id "%s" is already used' % id)
     else:
@@ -656,11 +656,11 @@ def generate_meta_constraints():
     meta_fact(And([super_type(NilType) == NilType, actual_type(nil) == NilType, Not(alive(nil))]))
 
     for class_ in _all_classes.values():
-        vdomain = declare_obj_var(class_)
+        vdomain = ObjectVar(class_)
         allinst = class_.all_instances()
         for ref in class_.references.values():
             if ref.multiple:
-                vrange = declare_obj_var(ref.type)
+                vrange = ObjectVar(ref.type)
                 meta_fact(allinst.forall(vdomain, ref.type.all_instances().otherwise(vrange, Not(vdomain[ref].contains(vrange)))))
             else:
                 body = And(vdomain[ref].alive(), vdomain[ref].isinstance(ref.type))

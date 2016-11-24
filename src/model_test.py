@@ -37,8 +37,8 @@ class TestModelCreation(unittest.TestCase):
 
         # self.assertEqual( str(d1['deploy']['host'].guard), '([varDockerImage1] | host(deploy(d1), varDockerImage1))')
 
-        x = declare_obj_var(self.DockerImage, 'x')
-        y = declare_obj_var(self.Vm, 'y')
+        x = ObjectVar(self.DockerImage, 'x')
+        y = ObjectVar(self.Vm, 'y')
 
         # deploy = self.DockerImage.references['deploy'].z3()
         # host = self.Vm.references['host'].z3()
@@ -80,10 +80,10 @@ class TestModelCreation(unittest.TestCase):
     def test_join_set(self):
         all_di = self.DockerImage.all_instances()
         all_vm = self.Vm.all_instances()
-        x1 = declare_obj_var(self.DockerImage, 'x1')
-        x2 = declare_obj_var(self.DockerImage, 'x2')
-        y1 = declare_obj_var(self.Vm, 'y1')
-        y2 = declare_obj_var(self.Vm, 'y2')
+        x1 = ObjectVar(self.DockerImage, 'x1')
+        x2 = ObjectVar(self.DockerImage, 'x2')
+        y1 = ObjectVar(self.Vm, 'y1')
+        y2 = ObjectVar(self.Vm, 'y2')
         self._assert_expr_in_string(
             all_di.join(all_di).forall([x1, x2], Implies(x1['port']==x2['port'], x1 == x2)),
             'ForAll([x1,x2],Implies(And(And(alive(x1),is_instance(x1, DockerImage)),And(alive(x2),is_instance(x2, DockerImage))),Implies(port(x1) == port(x2), x1 == x2)))'
@@ -110,7 +110,7 @@ class TestModelCreation(unittest.TestCase):
         solver = Solver()
         solver.add(generate_meta_constraints())
 
-        x = declare_obj_var(self.DockerImage, 'x')
+        x = ObjectVar(self.DockerImage, 'x')
         solver.add(self.DockerImage.all_instances().forall(x, x['mem'] <= x['deploy']['vmem']))
 
         solver.add(generate_config_constraints())
@@ -134,8 +134,8 @@ class TestModelCreation(unittest.TestCase):
 
         generate_config_constraints()
 
-        x = declare_obj_var(self.DockerImage, 'x')
-        y = declare_obj_var(self.Vm, 'y')
+        x = ObjectVar(self.DockerImage, 'x')
+        y = ObjectVar(self.Vm, 'y')
 
         self._assert_expr_in_string(
             self.Vm.forall(y, y['host'].map(x, x['mem']).sum() <= y['vmem']),
@@ -174,7 +174,7 @@ class TestModelCreation(unittest.TestCase):
         print Ubuntu.get_feature('mem').mandatory
         self.assertTrue(DockerImage.get_feature('deploy').mandatory)
         self._assert_onevar_expr_in_pattern(
-            declare_obj_var(Ubuntu, 'ubuntu')['deploy']['host'],
+            ObjectVar(Ubuntu, 'ubuntu')['deploy']['host'],
             '[([{0}] | host(deploy(ubuntu), {0}))]'
         )
 
