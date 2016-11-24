@@ -126,6 +126,10 @@ print result
 
 ```
 
-# Optimization
+# Examples
 
-A simple example can be found [here](https://github.com/SINTEF-9012/consolas/blob/72a198261a8dc3b794302d34c7315b56bebd1ba9/examples/docker-vm.py)
+A simple example for optimizing the deployment of docker images on a set of Vms in
+different sizes: [examples/docker-vm.py](https://github.com/SINTEF-9012/consolas/blob/72a198261a8dc3b794302d34c7315b56bebd1ba9/examples/docker-vm.py)
+
+Another example of the farmer river crossing problem [examples/river-crossing],
+which is also used by [alloy's tutorial](http://alloy.mit.edu/alloy/tutorials/online/frame-RC-1.html).

@@ -34,8 +34,8 @@ classes = yaml.load(classes_yaml)
 DockerImage, Ubuntu, Nimbus, Vm, LargeVm, SmallVm = load_all_classes(classes)
 
 # Some temporary variables to be used later in quantifiers
-x = declare_obj_var(DockerImage, 'x')
-y = declare_obj_var(Vm, 'y')
+x = ObjectVar(DockerImage, 'x')
+y = ObjectVar(Vm, 'y')
 
 # Summon the Z3Opt solver, with optimization and weak constraint support
 optimizer = Optimize()
