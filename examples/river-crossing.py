@@ -45,21 +45,17 @@ config_fact(And([Or(Not(states[i].alive()), states[i]==Final, states[i]['next']=
                 ]))
 config_fact(Implies(states[-1].alive(), states[-1]['next'].undefined()))
 
-config_fact(State.forall(s, Or(s == Final, If(
-    s['near'].contains(farmer),
-    And(s['next']['far'].contains(farmer), s['near'].exists(
-        o, And(s['next']['far'].contains(o), Object.forall(
-            o2, Or(o2==farmer, o2==o, s['next']['near'].contains(o2) == s['near'].contains(o2)))
-               )
-    )),
-    And(s['next']['near'].contains(farmer), s['far'].exists(
-        o, And(s['next']['near'].contains(o), Object.forall(
-            o2, Or(o2==farmer, o2==o, s['next']['far'].contains(o2) == s['far'].contains(o2)))
-               )
+def move(s, thisside, otherside):
+    return And(s['next'][otherside].contains(farmer), s[thisside].exists(
+        o, And(s['next'][otherside].contains(o), Object.forall(
+            o2, Or(o2==farmer, o2==o, s['next'][thisside].contains(o2) == s[thisside].contains(o2))
+        ))
     ))
-))))
-config_fact(Start == states[0])
 
+config_fact(State.forall(
+    s, Or(s == Final, If(s['near'].contains(farmer), move(s, 'near', 'far'), move(s, 'far', 'near')))
+))
+config_fact(Start == states[0])
 
 meta_fact(State.forall(s, If(
     s['near'].contains(farmer),
