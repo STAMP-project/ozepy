@@ -1,9 +1,9 @@
 from src.model import *
 from z3 import *
 import yaml
-from pprint import pprint
+import timeit
 
-NUM_STATES = 10
+NUM_STATES = 8
 
 class_in_yaml = """
 -
@@ -29,44 +29,36 @@ generate_meta_constraints()
 meta_fact(State.join(Object).forall([s, o], s['near'].contains(o) != s['far'].contains(o)))
 meta_fact(Object.forall(o, Start['near'].contains(o)))
 meta_fact(State.forall(s, Object.forall(o, s['far'].contains(o)) == (s == Final)))
-meta_fact(And(Start.alive(), Final.alive()))
 meta_fact(State.forall(s, And(s.alive(), s['next'].undefined()) == (s == Final)))
+meta_fact(And(Start.alive(), Final.alive()))
 
-farmer = DefineObject('farmer', Object).get_constant()
-fox = DefineObject('fox', Object).get_constant()
-chicken = DefineObject('chicken', Object).get_constant()
-grain = DefineObject('grain', Object).get_constant()
-states = [DefineObject('state%d' % i, State, suspended=True).get_constant() for i in range(0,NUM_STATES)]
+farmer, fox, chicken, grain = [DefineObject(name, Object).get_constant()
+                               for name in ['farmer', 'fox', 'chicken', 'grain']]
+states = [DefineObject('state%d' % i, State, suspended=True).get_constant() for i in range(0, NUM_STATES)]
 
 generate_config_constraints()
-config_fact(And([fox['eat']==chicken, chicken['eat']==grain, grain['eat'].undefined(), farmer['eat'].undefined()]))
-config_fact(And([Or(Not(states[i].alive()), states[i]==Final, states[i]['next']==states[i+1])
-                 for i in range(0, len(states)-1)
-                ]))
+config_fact(And([fox['eat'] == chicken, chicken['eat'] == grain, grain['eat'].undefined(), farmer['eat'].undefined()]))
+config_fact(And([Or(Not(states[i].alive()), states[i] == Final, states[i]['next'] == states[i+1])
+                 for i in range(0, len(states)-1)]))
 config_fact(Implies(states[-1].alive(), states[-1]['next'].undefined()))
+config_fact(Start == states[0])
 
 def move(s, thisside, otherside):
     return And(s['next'][otherside].contains(farmer), s[thisside].exists(
         o, And(s['next'][otherside].contains(o), Object.forall(
-            o2, Or(o2==farmer, o2==o, s['next'][thisside].contains(o2) == s[thisside].contains(o2))
-        ))
-    ))
-
+            o2, Or(o2 == farmer, o2 == o, s['next'][thisside].contains(o2) == s[thisside].contains(o2))))))
 config_fact(State.forall(
-    s, Or(s == Final, If(s['near'].contains(farmer), move(s, 'near', 'far'), move(s, 'far', 'near')))
-))
-config_fact(Start == states[0])
-
-meta_fact(State.forall(s, If(
+    s, Or(s == Final, If(s['near'].contains(farmer), move(s, 'near', 'far'), move(s, 'far', 'near')))))
+config_fact(State.forall(s, If(
     s['near'].contains(farmer),
     s['far'].forall(o, Not(s['far'].contains(o['eat']))),
-    s['near'].forall(o, Not(s['near'].contains(o['eat'])))
-)))
+    s['near'].forall(o, Not(s['near'].contains(o['eat']))))))
 
 solver = Solver()
 solver.add(*get_all_meta_facts())
 solver.add(*get_all_config_facts())
-print solver.check()
+
+print "Time for checking:", timeit.timeit(solver.check, number=1)
 result = cast_all_objects(solver.model())
 # pprint(result)
 
