@@ -2,6 +2,7 @@ import unittest
 from model import *
 import re
 import pprint
+import yaml
 
 
 class TestModelCreation(unittest.TestCase):
@@ -178,6 +179,65 @@ class TestModelCreation(unittest.TestCase):
             '[([{0}] | host(deploy(ubuntu), {0}))]'
         )
 
+    def test_load_classes_yaml(self):
+        start_over()
+        classes_yaml = """
+        -
+          Color: ['red', 'blue', 'green']
+          KeyGroup: ['kg1', 'kg2']
+        -
+          name: DockerImage
+          attribute: [{name: mem, type: Integer}]
+          reference: [{name: deploy, type: Vm, mandatory: true}]
+        -
+          name: Ubuntu
+          supertype: DockerImage
+        -
+          name: Nimbus
+          supertype: Ubuntu
+        -
+          name: Supervisor
+          supertype: Ubuntu
+        -
+          name: Vm
+          abstract: True
+          attribute: [{name: vmem, type: Integer}, {name: price, type: Integer}]
+          reference: [{name: host, type: DockerImage, multiple: true, opposite: deploy}]
+        -
+          name: LargeVm
+          supertype: Vm
+        -
+          name: SmallVm
+          supertype: Vm
+        """
+        pprint.pprint(load_all_classes(yaml.load(classes_yaml)))
+        Color, (r, g, b) = get_enum('Color')
+        self.assertEqual('red', str(r))
+
+    def test_enum_attr(self):
+        Supervisor = DefineClass('Supervisor', self.Ubuntu)
+        Color, (red, green, blue) = EnumSort('Color', ['red', 'green', 'blue'])
+        Supervisor.define_attribute('color', Color)
+
+        x = ObjectVar(Supervisor, 'x')
+
+        solver = Solver()
+        generate_meta_constraints()
+        meta_fact(Supervisor.forall(x, Implies(x['color']==red, x['deploy'].isinstance(self.LargeVm))))
+
+        vm1 = DefineObject('vm1', self.Vm, suspended=True)
+        sv1 = DefineObject('sv1', Supervisor)
+        generate_config_constraints()
+
+        solver.add(*get_all_meta_facts())
+        solver.add(*get_all_config_facts())
+
+        solver.check()
+        print cast_all_objects(solver.model())
+        solver.push()
+        solver.add(sv1.get_constant()['color']==red)
+        solver.check()
+        print cast_all_objects(solver.model())
 
     def test_supertypes(self):
         # self.assertEqual(True, get_ancestors(self.Nimbus))

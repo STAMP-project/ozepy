@@ -75,7 +75,7 @@ expr4 = expr3['host']
 ```
 
 We used the '[]' operator (or the ```__getitem__``` method) on an object constant to access an attribute or a reference
-of the object. The operator makes an expression, which type is the same as the attribute or reference.
+of the object. The operator makes an expression, whose type is the same as the attribute or reference.
 ```expr1``` is an integer expression, which can be used just as any z3 integer experssions, such as comparing
 to another integer to construct a boolean expression (```expr2```).
 ```expr3``` is an object expression in type of ```Vm```, and therefore, we can access any ```Vm``` reference on ```expr3```.

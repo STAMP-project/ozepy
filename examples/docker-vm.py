@@ -18,6 +18,9 @@ classes_yaml = """
   name: Nimbus
   supertype: Ubuntu
 -
+  name: Supervisor
+  supertype: Ubuntu
+-
   name: Vm
   abstract: True
   attribute: [{name: vmem, type: Integer}, {name: price, type: Integer}]
