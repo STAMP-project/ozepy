@@ -229,7 +229,7 @@ class Object(ConsolasElement):
             self.force_value(k, v)
 
     def get_constant(self):
-        return ObjectConst(self.name, self.type)
+        return ObjectConst(self.type, self.name)
 
     def cast(self, feature, model):
         feature = self.type.get_feature(feature)
@@ -325,9 +325,13 @@ class ObjectExpr(ConsolasExpr):
 
 class ObjectConst(ObjectExpr):
 
-    def __init__(self, name, type):
+    def __init__(self, type, name):
         self.z3_element = Const(name, _Inst)
         self.type = type
+
+
+def ObjectConsts(type_, *names):
+    return [ObjectConst(type_, name) for name in names]
 
 
 class PartialExpr(ConsolasExpr):
@@ -589,9 +593,13 @@ def ObjectVar(_type, id=None):
         _consolas_assert(not (id in _all_vars), 'id "%s" is already used' % id)
     else:
         id = 'var%s%d' % (_type.name, len(_all_vars)+1)
-    const = ObjectConst(id, _type)
+    const = ObjectConst(_type, id)
     _all_vars[id] = const
     return const
+
+
+def ObjectVars(type_, *ids):
+    return [ObjectVar(type_, id) for id in ids]
 
 
 def get_declared_var(id):
@@ -615,18 +623,30 @@ def start_over():
 #
 ###############################################
 
+
 def meta_fact(constraint):
     _meta_constraints.append(constraint)
+
+
+def meta_facts(*constraints):
+    _meta_constraints.extend(constraints)
 
 
 def config_fact(constraint):
     _config_constraints.append(constraint)
 
+
+def config_facts(*constraints):
+    _config_constraints.extend(constraints)
+
+
 def get_all_meta_facts():
     return list(_meta_constraints);
 
+
 def get_all_config_facts():
     return list(_config_constraints);
+
 
 def generate_meta_constraints():
     del _meta_constraints[:]
@@ -641,7 +661,7 @@ def generate_meta_constraints():
     i2 = Const('i2', _Inst)
 
     meta_fact(ForAll(t1, Or([t1 == i for i in all_class_z3])))
-    meta_fact(And([super_type(x.z3())==
+    meta_fact(And([super_type(x.z3()) ==
                   (x.supertype.z3() if x.supertype else NilType)
                   for x in _all_classes.values()]
                   ))
@@ -662,12 +682,13 @@ def generate_meta_constraints():
             if ref.multiple:
                 vrange = ObjectVar(ref.type)
                 meta_fact(allinst.forall(vdomain, ref.type.all_instances().otherwise(vrange, Not(vdomain[ref].contains(vrange)))))
+                # meta_fact(allinst.otherwise(vdomain, ForAll(i1, Not(ref.z3()(vdomain.z3(), i1)))))
             else:
                 body = And(vdomain[ref].alive(), vdomain[ref].isinstance(ref.type))
                 if not ref.mandatory:
                     body = Or(vdomain[ref].undefined(), body)
                 meta_fact(allinst.forall(vdomain, body))
-                meta_fact(allinst.otherwise(vdomain, vdomain[ref].undefined()))
+                # meta_fact(allinst.otherwise(vdomain, vdomain[ref].undefined()))
             if ref.opposite:
                 other_ref = ref.type.references[ref.opposite]
                 this_side = vdomain[ref] == vrange \
@@ -748,6 +769,7 @@ def cast_object(object_, model):
         result[feature] = v
 
     return result
+
 
 def cast_all_objects(model):
     result = {}

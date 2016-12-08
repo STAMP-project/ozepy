@@ -32,7 +32,7 @@ class TestModelCreation(unittest.TestCase):
         self.assertEqual(self.DockerImage.references['deploy'].z3()(d1.z3()).sort(), d1.z3().sort())
 
     def test_reference_refers(self):
-        d1 = ObjectConst('d1', self.DockerImage)
+        d1 = ObjectConst(self.DockerImage, 'd1')
         self.assertEqual(d1['deploy'].z3(), self.DockerImage.references['deploy'].z3()(d1.z3()))
 
         # self.assertEqual( str(d1['deploy']['host'].guard), '([varDockerImage1] | host(deploy(d1), varDockerImage1))')
