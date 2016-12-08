@@ -235,7 +235,7 @@ class TestModelCreation(unittest.TestCase):
         solver.check()
         print cast_all_objects(solver.model())
         solver.push()
-        solver.add(sv1.get_constant()['color']==red)
+        solver.add(sv1.get_constant()['color'] == red)
         solver.check()
         print cast_all_objects(solver.model())
 
