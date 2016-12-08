@@ -242,7 +242,7 @@ class Object(ConsolasElement):
                 return is_true(result)
             if is_int_value(result):
                 return int(str(result))
-            return None
+            return str(result) # suppose it is an enum item
         elif feature.is_reference() and not feature.multiple:
             for obj in _all_objects.values():
                 if str(model.eval(const[feature]==obj.get_constant())) == 'True':
@@ -515,7 +515,7 @@ class SetExpr(ConsolasExpr):
     def __str__(self):
         return '[%s]' % self.guard
 
-
+_all_enums = {}
 _all_classes = {}
 _all_objects = {}
 _all_vars = {}
@@ -531,6 +531,11 @@ def DefineClass(name, supertype=None, abstract=False):
     return class_
 
 
+def load_enums(desc):
+    for k, v in desc.items():
+        enum, values = EnumSort(k, v)
+        _all_enums[enum] = values
+
 def load_class_head(desc):
     desc = desc.copy()
     desc.pop('reference', None)
@@ -541,6 +546,7 @@ def load_class_head(desc):
         desc['supertype'] = _all_classes[supertype]
     return DefineClass(**desc)
 
+
 def _resolve_type(type_):
     if type_ in _all_classes:
         return _all_classes[type_]
@@ -548,7 +554,12 @@ def _resolve_type(type_):
         return IntSort()
     elif type_ == 'Boolean':
         return BoolSort()
+    else:
+        enum = [e for e in _all_enums.keys() if str(e)==type_]
+        if enum:
+            return enum[0]
     _consolas_assert(False, 'type %s not defined' % type_)
+
 
 def load_class_body(desc):
     name = desc['name']
@@ -564,10 +575,13 @@ def load_class_body(desc):
 
 
 def load_all_classes(descs):
+    if 'name' not in descs[0]:  #Then it is the enum definitions
+        load_enums(descs[0])
+        descs.pop(0)
     classes = [load_class_head(x) for x in descs]
     for x in descs:
         load_class_body(x)
-    return classes
+    return [e for e in _all_enums] + classes
 
 def DefineObject(name, type, suspended=False):
     _consolas_assert(not (name in _all_objects), 'Object name "%s" is already used' % name)
@@ -587,6 +601,11 @@ def get_ancestors(clazz):
         supertype = supertype.supertype
     return result
 
+def get_enum(enum):
+    found = [e for e in _all_enums if str(e)==str(enum)]
+    _consolas_assert(found, "Enum %s is not defined" % enum)
+    found = found[0]
+    return found, _all_enums[found]
 
 def ObjectVar(_type, id=None):
     if id:
@@ -614,6 +633,7 @@ def start_over():
     _all_vars.clear()
     _all_classes.clear()
     _all_objects.clear()
+    _all_enums.clear()
     del _meta_constraints[:]
     del _config_constraints[:]
 
