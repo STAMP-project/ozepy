@@ -49,12 +49,21 @@ def move(s, thisside, otherside):
         o, And(s['next'][otherside].contains(o), Object.forall(
             o2, Or(o2 == farmer, o2 == o, s['next'][thisside].contains(o2) == s[thisside].contains(o2))))))
 
+# def move(s, thisside, otherside):
+#     return And(s['next'][otherside].contains(farmer), s[thisside].filter(
+#         o, s['next'][otherside].contains(o)).count() <= 2)
+
 config_fact(State.forall(
     s, Or(s == Final, If(s['near'].contains(farmer), move(s, 'near', 'far'), move(s, 'far', 'near')))))
+
 config_fact(State.forall(s, If(
     s['near'].contains(farmer),
     s['far'].forall(o, Not(s['far'].contains(o['eat']))),
     s['near'].forall(o, Not(s['near'].contains(o['eat']))))))
+
+# config_fact((State * Object).forall(
+#     [s, o], Or(o['eat'].undefined(), Implies(
+#         s['far'].contains(o) == s['far'].contains(o['eat']), s['far'].contains(o) == s['far'].contains(farmer)))))
 
 solver = Solver()
 solver.add(*get_all_meta_facts())
