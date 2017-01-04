@@ -212,6 +212,7 @@ class Object(ConsolasElement):
         self.suspended = suspended
         self.solved_model = None
         self.forced_values = {}
+        self.const = None
 
     def force_value(self, feature, value):
         if isinstance(feature, str):
@@ -229,14 +230,16 @@ class Object(ConsolasElement):
             self.force_value(k, v)
 
     def get_constant(self):
-        return ObjectConst(self.type, self.name)
+        if self.const is None:
+            self.const = ObjectConst(self.type, self.name)
+        return self.const
 
     def cast(self, feature, model):
         feature = self.type.get_feature(feature)
         const = self.get_constant()
         if not feature:
             return None
-        if feature.is_attribute():
+        if feature.is_attribute() and not feature.multiple:  #TODO integer set
             result = model.eval(const[feature])
             if is_bool(result):
                 return is_true(result)
@@ -269,6 +272,9 @@ class Object(ConsolasElement):
     def __repr__(self):
         return self.name
 
+    def __getitem__(self, item):
+        return self.get_constant()[item]
+
 class ConsolasExpr(ConsolasElement):
 
     def __init__(self):
@@ -300,8 +306,8 @@ class ObjectExpr(ConsolasExpr):
         _range = feature.type
 
         if feature.multiple:
-            _consolas_assert(isinstance(_range, Class), "No support of multiple attributes")
-            var = ObjectVar(_range)
+            # _consolas_assert(isinstance(_range, Class), "No support of multiple attributes")
+            var = DeclareVar(_range)
             guard = PartialExpr(var, z3fun(self.z3(), var.z3()))
             return SetExpr(guard, _range)
         elif isinstance(feature, Reference):
@@ -329,6 +335,12 @@ class ObjectConst(ObjectExpr):
         self.z3_element = Const(name, _Inst)
         self.type = type
 
+
+class DataConst(ConsolasExpr):
+
+    def __init__(self, type_, name):
+        self.z3_element = Const(name, type_)
+        self.type = type_
 
 def ObjectConsts(type_, *names):
     return [ObjectConst(type_, name) for name in names]
@@ -364,7 +376,7 @@ class PartialExpr(ConsolasExpr):
         result = self.z3_element
         for i in range(0,len(self.vars)):
             k,v = self.vars[i]
-            _consolas_assert(v, 'Free variable "%s" is not bound' % k)
+            _consolas_assert(v is not None, 'Free variable "%s" is not bound' % k)
             if isinstance(v, ConsolasExpr):
                 self.vars[i] = (k, v.z3())
         #i = self.vars.keys()[0]
@@ -607,12 +619,21 @@ def get_enum(enum):
     found = found[0]
     return found, _all_enums[found]
 
-def ObjectVar(_type, id=None):
+
+def ObjectVar(type_, id=None):
+    _consolas_assert(isinstance(type_, Class), "use ObjectVar only on Consolas classes")
+    return DeclareVar(type_, id)
+
+
+def DeclareVar(_type, id=None):
     if id:
         _consolas_assert(not (id in _all_vars), 'id "%s" is already used' % id)
     else:
         id = 'var%s%d' % (_type.name, len(_all_vars)+1)
-    const = ObjectConst(_type, id)
+    if isinstance(_type, Class):
+        const = ObjectConst(_type, id)
+    else:
+        const = DataConst(_type, id)
     _all_vars[id] = const
     return const
 

@@ -239,6 +239,40 @@ class TestModelCreation(unittest.TestCase):
         solver.check()
         print cast_all_objects(solver.model())
 
+    def test_multiple_data(self):
+        Supervisor = DefineClass('Supervisor', self.Ubuntu)
+        Supervisor.define_attribute('ports', IntSort(), multiple=True)
+        Color, (red, green, blue) = EnumSort('Color', ['red', 'green', 'blue'])
+        Supervisor.define_attribute('color', Color, multiple=True)
+
+        x = DeclareVar(Color, 'x')
+        i = DeclareVar(IntSort(), 'i')
+        ci = i.z3()
+        o = DeclareVar(Supervisor, 'o')
+        o2 = DeclareVar(Supervisor, 'o2')
+        self._assert_expr_in_string(
+            Supervisor.forall(o, o['color'].exists(x, x.z3() == red)),
+            "ForAll(o,Implies(And(alive(o), is_instance(o, Supervisor)),Exists(x, And(color(o, x), x == red))))"
+        )
+
+        print Supervisor.forall(o, o['ports'].forall(i, And(i.z3() > 8000, i.z3() < 9000)))
+        svs = [DefineObject('sv%d' % n, Supervisor) for n in range(1,10)]
+        vm1 = DefineObject('vm1', self.Vm, suspended=True)
+
+        solver = Solver()
+        generate_meta_constraints()
+        meta_facts(
+            Supervisor.forall(o, o['ports'].forall(i, And(i.z3() > 8000, i.z3() < 9000))),
+            Supervisor.forall(o, o['ports'].exists(i, True)),
+            (Supervisor * Supervisor).forall([o, o2], Implies(Exists(ci, And(o['ports'].contains(ci), o2['ports'].contains(ci))), o == o2))
+        )
+        generate_config_constraints()
+        solver.add(*get_all_meta_facts())
+        solver.add(*get_all_config_facts())
+        print solver.check()
+        # print solver.model().eval(Supervisor.get_feature('ports').z3()(svs[0].z3()))
+
+
     def test_supertypes(self):
         # self.assertEqual(True, get_ancestors(self.Nimbus))
         self.assertEqual([self.Ubuntu, self.DockerImage], get_ancestors(self.Nimbus))
