@@ -377,7 +377,7 @@ class PartialExpr(ConsolasExpr):
         for i in range(0,len(self.vars)):
             k,v = self.vars[i]
             _consolas_assert(v is not None, 'Free variable "%s" is not bound' % k)
-            if isinstance(v, ConsolasExpr):
+            if isinstance(v, ConsolasElement):
                 self.vars[i] = (k, v.z3())
         #i = self.vars.keys()[0]
         #print (i, self.vars[i])
