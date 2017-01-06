@@ -328,6 +328,9 @@ class ObjectExpr(ConsolasExpr):
     def __eq__(self, other):
         return self.z3() == other.z3()
 
+    def __ne__(self, other):
+        return self.z3() != other.z3()
+
 
 class ObjectConst(ObjectExpr):
 
@@ -520,6 +523,12 @@ class SetExpr(ConsolasExpr):
         return Sum([substitute(item, (var.z3(), x.z3()))
                     for x in _all_objects.values()
                     if x.isinstance_by_decl(var.type)])
+
+    def __eq__(self, other):
+        _consolas_assert(not isinstance(self.guard, list), '== only works on a simple set')
+        if isinstance(other, list):
+            var = ObjectVar(self.type)
+            return And(And([self.contains(x) for x in other]), self.forall(var, Or([var == x for x in other])))
 
     def __mul__(self, other):
         return self.join(other)
