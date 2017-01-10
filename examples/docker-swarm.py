@@ -2,14 +2,18 @@ from src.model import *
 from z3 import *
 
 import yaml
-import inspect
 import pprint
 import inspect
 import linecache
+import timeit
 
 classes_yaml = """
 -
+  name: Element
+  reference: [{name: label, type: Label, multiple: true}]
+-
   name: Service
+  supertype: Element
   attribute:
     - {name: ports, type: Integer, multiple: true}
   reference:
@@ -18,67 +22,102 @@ classes_yaml = """
     - {name: nodeLabel, type: Label, multiple: true}
     - {name: nodeDirect, type: Node}
     - {name: link, type: Service, multiple: true}
-    - {name: label, type: Label, multiple: true}
 -
   name: Node
+  supertype: Element
   attribute:
     - {name: isMaster, type: Boolean}
     - {name: slots, type: Integer}
   reference:
-    - {name: label, type: Label, multiple: true}
     - {name: host, type: Service, multiple: true, opposite: deploy}
 -
-  name : Label
+  name: Label
+-
+  name: UniqueLabel
+  supertype: Label
+# Below are the service definitions from Docker-Compose file
 -
   name: FunctionLabel
   supertype: Label
 -
   name: StorageLabel
-  supertype: Label
+  supertype: UniqueLabel
+-
+  name: Db
+  supertype: Service
+-
+  name: Wordpress
+  supertype: Service
+-
+  name: SmallVm
+  supertype: Node
+-
+  name: LargeVm
+  supertype: Node
 """
 
 
 classes = yaml.load(classes_yaml)
-Service, Node, Label, FunctionLabel, StorageLabel = load_all_classes(classes)
+Element, Service, Node, Label, UniqueLabel, \
+FunctionLabel, StorageLabel, Db, Wordpress, SmallVm, LargeVm \
+    = load_all_classes(classes)
 
 generate_meta_constraints()
 
+e1 = ObjectVar(Element, 'e1')
 s1, s2 = ObjectVars(Service, 's1', 's2')
 n1, n2 = ObjectVars(Node, 'n1', 'n2')
 l1, l2 = ObjectVars(FunctionLabel, 'l1', 'l2')
 
-db = DefineObject('db', Service)
-wordpress = DefineObject('wordpress', Service)
+db = DefineObject('db', Db)
+# wordpress = DefineObject('wordpress', Wordpress)
+wordpresses = DefineObjects(['wordpress%d'%n for n in range(0, 10)], Wordpress)
 lb_wordpressdb, lb_cachedb = DefineObjects(['lb_wordpressdb', 'lb_cachedb'], FunctionLabel)
 lb_ssd, lb_disk = DefineObjects(['lb_ssd', 'lb_disk'], StorageLabel)
-vm1, vm2 = DefineObjects(['vm1', 'vm2'], Node, suspended=True)
+vm1= DefineObject('vm1', LargeVm, suspended=True)
+vm3, vm4 = DefineObjects(['vm3', 'vm4'], SmallVm, suspended=True)
 
 
 generate_config_constraints()
 
+# General constraints simulating the behaviour of docker-swarm scheduler
 meta_facts(
+    Element.forall(e1, e1['label'].forall(l1, Implies(l1.isinstance(UniqueLabel), Not(e1['label'].exists(
+        l2, And(l1.sametype(l2), l1 != l2)
+    ))))),
     Service.forall(s1, Or(
         s1['affinityLabel'].undefined(),
         s1['deploy']['host'].exists(s2, And(s2 != s1, s2['label'].contains(s1['affinityLabel'])))
     )),
     Service.forall(s1, s1['nodeLabel'].forall(l1, s1['deploy']['label'].contains(l1))),
-    Service.forall(s1, Or(s1['nodeDirect'].undefined(), s1['nodeDirect']==s1['deploy'])),
+    Service.forall(s1, Or(s1['nodeDirect'].undefined(), s1['nodeDirect'] == s1['deploy'])),
     Node.exists(n1, n1['isMaster']),
-    Node.forall(n1, Or(n1['slots'] <= 0, n1['host'].count() <= n1['slots'])),
-    (StorageLabel * StorageLabel).forall([l1, l2], Node.forall(
-        n1, Implies(And(n1['label'].contains(l1), n1['label'].contains(l2)), l1 == l2)))
+    Node.forall(n1, Or(n1['slots'] <= 0, n1['host'].count() <= n1['slots']))
 )
 
+# Labels set up by users
+# lineno_label_assings = inspect.currentframe().f_lineno
+# label_assigns = [
+#     db['label'] == [lb_wordpressdb],
+#     wordpress['label'] == [],
+#     wordpress['affinityLabel'] == lb_wordpressdb,
+#     vm1['slots'] == 2,
+#     vm1['label'].contains(lb_ssd),
+#     vm2['label'].contains(lb_disk),
+#     db['nodeLabel'].contains(lb_ssd),
+#     db['nodeDirect'] == vm2
+# ]
 lineno_label_assings = inspect.currentframe().f_lineno
-label_assigns = [
+label_assigns = {
     db['label'] == [lb_wordpressdb],
-    wordpress['label'] == [],
-    wordpress['affinityLabel'] == lb_wordpressdb,
-    vm1['slots'] == 1,
-    vm1['label'].contains(lb_ssd),
-    vm2['label'].contains(lb_disk),
-    db['nodeLabel'].contains(lb_ssd)
-]
+    db['nodeLabel'].contains(lb_ssd),
+    Wordpress.forcevalue('affinityLabel', lb_wordpressdb),
+    Wordpress.forcevalue('label', []),
+    SmallVm.forcevalue('slots', 16),
+    LargeVm.forcevalue('slots', 16),
+    SmallVm.forall(n1, n1['label'].contains(lb_ssd)),
+    LargeVm.forall(n1, n1['label'].contains(lb_disk))
+}
 
 solver = Solver()
 solver.add(*get_all_meta_facts())
@@ -88,8 +127,22 @@ solver.add(*get_all_config_facts())
 def print_model_deploy(model):
     result = cast_all_objects(model)
     for v in result.values():
-        if v['type'] == 'Service':
-            print '%s -> %s ' % (v['name'], v['deploy'])
+        if 'deploy' in v:
+            print '%s(%s) -> %s(%s) ' % (v['name'], v['type'], v['deploy'], result[v['deploy']]['type'])
+    # pprint.pprint(result)
+
+
+def record_original_text(constraintlist, lineno):
+    lineno += 2
+    record = dict()
+    for c in constraintlist:
+        constraint_text = linecache.getline(__file__, lineno).strip(" ,\n")
+        while constraint_text.strip().startswith("#"):
+            lineno += 1
+            constraint_text = linecache.getline(__file__, lineno).strip(" ,\n")
+        lineno += 1
+        record[c] = constraint_text
+    return record
 
 ####################################
 # Now starts different usages
@@ -103,14 +156,10 @@ def check_conflicting_labels():
     '''
     ps = []
     assumptions = []
-    lineno = lineno_label_assings + 2
+
+    original_text = record_original_text(label_assigns, lineno_label_assings)
     for c in label_assigns:
-        constraint_text = linecache.getline(__file__, lineno).strip(" ,\n")
-        while constraint_text.strip().startswith("#"):
-            lineno += 1
-            constraint_text = linecache.getline(__file__, lineno).strip(" ,\n")
-        lineno += 1
-        p = Bool(constraint_text)
+        p = Bool(original_text[c])
         assumptions.append(Implies(p, c))
         ps.append(p)
 
@@ -124,24 +173,28 @@ def check_conflicting_labels():
         return False
 
 
-
 def check_constant_propositions():
     '''
-    If unsat, then unsat_core indicate which proposition is always true under the current labeling
-      remove the unsat_core, and check again, the new unsat_core indicate more constant propositions
-      until sat, then the model gives a sample "wrong scheduling" that breaks the remained propositions
+    The function can lead to two conclusions:
+      - All the propositions are constant, which means that no matter how the swarm scheduler behave, these
+        proposition will hold
+      - A set of propositions are not constant. If this is the case, this function
+        also prints a sample scheduling that break these propositions
     :return:
     '''
     ps = set()
     assumptions = []
+    proposition_lineno = inspect.currentframe().f_lineno
     propositions = [
-        wordpress['deploy'].alive(),
-        wordpress['deploy'] == db['deploy'],
-        # wordpress['deploy'] == vm2
-        wordpress['label'].count() == 0
+        And([wp['deploy'].alive() for wp in wordpresses]),
+        And([wp['deploy'] == db['deploy'] for wp in wordpresses]),
+        And([wp['deploy'] == vm3 for wp in wordpresses]),
+        And([wp['label'].count() == 0 for wp in wordpresses])
     ]
+
+    original_text = record_original_text(propositions, proposition_lineno)
     for c in propositions:
-        p = Bool(str(c))
+        p = Bool(original_text[c])
         assumptions.append(Implies(p, Not(c)))
         ps.add(p)
 
@@ -163,15 +216,33 @@ def check_constant_propositions():
         print "by the following scheduling:"
         print_model_deploy(solver.model())
 
+
+def optimize_scheduling():
+    optimize = Optimize()
+    optimize.add(*get_all_meta_facts())
+    optimize.add(*get_all_config_facts())
+    optimize.add(*label_assigns)
+
+    optimize.maximize(Node.all_instances().count())
+    if optimize.check() == sat:
+        print_model_deploy(optimize.model())
+    else:
+        print "no scheduling under current labeling"
+
 solver.push()
-check_conflicting_labels()
+t = timeit.timeit(check_conflicting_labels, number=1)
+print "Time for checking labels:", t, "\n"
 solver.pop()
 
 solver.push()
-check_constant_propositions()
+t = timeit.timeit(check_constant_propositions, number=1)
+print "Time for checking propositions:", t, "\n"
 solver.pop()
 
-
+solver.push()
+t = timeit.timeit(optimize_scheduling, number=1)
+print "Time for optimize:", t
+solver.pop()
 
 
     # pprint.pprint(result)

@@ -146,6 +146,11 @@ class Class(ConsolasElement):
         _consolas_assert(isinstance(other, Class), 'a class can only join to another class')
         return self.all_instances().join(other.all_instances())
 
+    def forcevalue(self, feature, value):
+        _consolas_assert(isinstance(feature, str), 'We require a feature name in string')
+        var = ObjectVar(self)
+        return self.forall(var, var[feature] == value)
+
     def __mul__(self, other):
         return self.join(other)
 
@@ -275,6 +280,16 @@ class Object(ConsolasElement):
     def __getitem__(self, item):
         return self.get_constant()[item]
 
+    def sametype(self, other):
+        return self.get_constant().sametype(other)
+
+    def alive(self):
+        return self.get_constant().alive()
+
+    def isinstance(self, class_):
+        return self.get_constant().isinstance(class_)
+
+
 class ConsolasExpr(ConsolasElement):
 
     def __init__(self):
@@ -324,6 +339,10 @@ class ObjectExpr(ConsolasExpr):
     def isinstance(self, clazz):
         _consolas_assert(isinstance(clazz, Class), 'We only check the type of object classes')
         return is_instance(self.z3(), clazz.z3())
+
+    def sametype(self, other):
+        _consolas_assert(isinstance(other, ObjectExpr) or isinstance(other, Object), 'An Object or ObjectExpr is expected')
+        return is_instance(other.z3(), actual_type(self.z3()))
 
     def __eq__(self, other):
         return self.z3() == other.z3()

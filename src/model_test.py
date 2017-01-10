@@ -272,6 +272,20 @@ class TestModelCreation(unittest.TestCase):
         print solver.check()
         # print solver.model().eval(Supervisor.get_feature('ports').z3()(svs[0].z3()))
 
+    def test_type_forcevalue(self):
+        vm1 = DefineObject('vm1', self.Vm)
+        d1, d2 = DefineObjects(['d1', 'd2'], self.DockerImage)
+        self._assert_expr_in_string(
+            self.Vm.forcevalue('host', [d1, d2]),
+            '''ForAll(varVm1,
+                       Implies(And(alive(varVm1), is_instance(varVm1, Vm)),
+                               And(And(host(varVm1, d1), host(varVm1, d2)),
+                                   ForAll(varDockerImage3,
+                                          Implies(host(varVm1,
+                                                       varDockerImage3),
+                                                  Or(varDockerImage3 == d1,
+                                                     varDockerImage3 == d2))))))'''
+        )
 
     def test_supertypes(self):
         # self.assertEqual(True, get_ancestors(self.Nimbus))
