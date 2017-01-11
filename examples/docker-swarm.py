@@ -20,6 +20,7 @@ classes_yaml = """
     - {name: deploy, type: Node, mandatory: true}
     - {name: affinityLabel, type: Label}
     - {name: nodeLabel, type: Label, multiple: true}
+    - {name: nNodeLabel, type: Label, multiple: true}
     - {name: nodeDirect, type: Node}
     - {name: link, type: Service, multiple: true}
 -
@@ -58,6 +59,7 @@ classes_yaml = """
 
 
 classes = yaml.load(classes_yaml)
+
 Element, Service, Node, Label, UniqueLabel, \
 FunctionLabel, StorageLabel, Db, Wordpress, SmallVm, LargeVm \
     = load_all_classes(classes)
@@ -68,13 +70,14 @@ e1 = ObjectVar(Element, 'e1')
 s1, s2 = ObjectVars(Service, 's1', 's2')
 n1, n2 = ObjectVars(Node, 'n1', 'n2')
 l1, l2 = ObjectVars(FunctionLabel, 'l1', 'l2')
+i1 = DeclareVar(IntSort(), 'i1')
 
 db = DefineObject('db', Db)
 # wordpress = DefineObject('wordpress', Wordpress)
-wordpresses = DefineObjects(['wordpress%d'%n for n in range(0, 10)], Wordpress)
+wordpresses = DefineObjects(['wordpress%d'%n for n in range(0, 3)], Wordpress)
 lb_wordpressdb, lb_cachedb = DefineObjects(['lb_wordpressdb', 'lb_cachedb'], FunctionLabel)
 lb_ssd, lb_disk = DefineObjects(['lb_ssd', 'lb_disk'], StorageLabel)
-vm1= DefineObject('vm1', LargeVm, suspended=True)
+vm1 = DefineObject('vm1', LargeVm, suspended=True)
 vm3, vm4 = DefineObjects(['vm3', 'vm4'], SmallVm, suspended=True)
 
 
@@ -82,15 +85,22 @@ generate_config_constraints()
 
 # General constraints simulating the behaviour of docker-swarm scheduler
 meta_facts(
-    Element.forall(e1, e1['label'].forall(l1, Implies(l1.isinstance(UniqueLabel), Not(e1['label'].exists(
-        l2, And(l1.sametype(l2), l1 != l2)
-    ))))),
+    Element.forall(e1, e1['label'].forall(
+        l1, Implies(l1.isinstance(UniqueLabel), Not(e1['label'].exists(
+            l2, And(l1.sametype(l2), l1 != l2))
+        ))
+    )),
     Service.forall(s1, Or(
         s1['affinityLabel'].undefined(),
         s1['deploy']['host'].exists(s2, And(s2 != s1, s2['label'].contains(s1['affinityLabel'])))
     )),
+    Service.forall(s1, s1['link'].forall(s2, s2['deploy'] == s1['deploy'])),
     Service.forall(s1, s1['nodeLabel'].forall(l1, s1['deploy']['label'].contains(l1))),
+    Service.forall(s1, s1['nNodeLabel'].forall(l1, Not(s1['deploy']['label'].contains(l1)))),
     Service.forall(s1, Or(s1['nodeDirect'].undefined(), s1['nodeDirect'] == s1['deploy'])),
+    Service.forall(s1, s1['ports'].forall(
+        i1, s1['deploy']['host'].forall(s2, Or(s1 == s2, Not(s2['ports'].contains(i1))))
+    )),
     Node.exists(n1, n1['isMaster']),
     Node.forall(n1, Or(n1['slots'] <= 0, n1['host'].count() <= n1['slots']))
 )
@@ -108,16 +118,18 @@ meta_facts(
 #     db['nodeDirect'] == vm2
 # ]
 lineno_label_assings = inspect.currentframe().f_lineno
-label_assigns = {
+label_assigns = [
     db['label'] == [lb_wordpressdb],
     db['nodeLabel'].contains(lb_ssd),
-    Wordpress.forcevalue('affinityLabel', lb_wordpressdb),
-    Wordpress.forcevalue('label', []),
-    SmallVm.forcevalue('slots', 16),
-    LargeVm.forcevalue('slots', 16),
-    SmallVm.forall(n1, n1['label'].contains(lb_ssd)),
+    Wordpress['affinityLabel'] == lb_wordpressdb,
+    Wordpress['label'] == [],
+    # Wordpress.forcevalue('ports', [8080]),
+    # Wordpress['nNodeLabel'] == [lb_ssd],
+    SmallVm['slots'] == 4,
+    LargeVm['slots'] == 16,
+    vm1['label'].contains(lb_ssd),
     LargeVm.forall(n1, n1['label'].contains(lb_disk))
-}
+]
 
 solver = Solver()
 solver.add(*get_all_meta_facts())
@@ -148,12 +160,13 @@ def record_original_text(constraintlist, lineno):
 # Now starts different usages
 ####################################
 
+
 def check_conflicting_labels():
-    '''
+    """
     If check returns sat, the model provides a sample scheduling
     If unsat, The unsat_core indicates which labels may make the scheduling impossible
     :return:
-    '''
+    """
     ps = []
     assumptions = []
 
@@ -244,5 +257,3 @@ t = timeit.timeit(optimize_scheduling, number=1)
 print "Time for optimize:", t
 solver.pop()
 
-
-    # pprint.pprint(result)

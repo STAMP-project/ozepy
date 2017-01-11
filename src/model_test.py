@@ -187,7 +187,7 @@ class TestModelCreation(unittest.TestCase):
           KeyGroup: ['kg1', 'kg2']
         -
           name: DockerImage
-          attribute: [{name: mem, type: Integer}]
+          attribute: [{name: mem, type: Integer}, {name: color, type: Color}]
           reference: [{name: deploy, type: Vm, mandatory: true}]
         -
           name: Ubuntu
@@ -212,6 +212,7 @@ class TestModelCreation(unittest.TestCase):
         """
         pprint.pprint(load_all_classes(yaml.load(classes_yaml)))
         Color, (r, g, b) = get_enum('Color')
+        print Color('red')
         self.assertEqual('red', str(r))
 
     def test_enum_attr(self):

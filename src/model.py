@@ -154,6 +154,24 @@ class Class(ConsolasElement):
     def __mul__(self, other):
         return self.join(other)
 
+    def __getitem__(self, item):
+        _consolas_assert(item in self.get_all_feature_names(), '%s is not a defined feature' % item)
+        return ForceValueSeed(self, item)
+
+
+class ForceValueSeed(ConsolasElement):
+
+    def __init__(self, type_, feature):
+        self.type_ = type_
+        self.feature = feature
+
+    def __eq__(self, value):
+        return self.type_.forcevalue(self.feature, value)
+
+    def __ne__(self, value):
+        return Not(self.__eq__(value))
+
+
 class CompositeClass(Class):
 
     def __init__(self, *types):
@@ -364,6 +382,14 @@ class DataConst(ConsolasExpr):
         self.z3_element = Const(name, type_)
         self.type = type_
 
+    def __eq__(self, other):
+        if isinstance(other, ConsolasElement):
+            other = other.z3()
+        return self.z3() == other
+
+    def __ne__(self, other):
+        return not self.__eq__(other)
+
 def ObjectConsts(type_, *names):
     return [ObjectConst(type_, name) for name in names]
 
@@ -443,13 +469,15 @@ class SetExpr(ConsolasExpr):
             v = ObjectVar(self.type)
             return self.exists(v, v == item)
         else:
+            if isinstance(item, int):
+                item = IntSort().cast(item)
             return self.guard.bindOne(item).complete()
 
     def forall(self, var, expr):
         mainvar, guard, body = self._prepare_quantifier(var, expr)
         return ForAll(mainvar, Implies(guard, body))
 
-    def exists(self, var,expr):
+    def exists(self, var, expr):
         mainvar, guard, body = self._prepare_quantifier(var, expr)
         return Exists(mainvar, And(guard, body))
 
@@ -545,9 +573,10 @@ class SetExpr(ConsolasExpr):
 
     def __eq__(self, other):
         _consolas_assert(not isinstance(self.guard, list), '== only works on a simple set')
-        if isinstance(other, list):
-            var = ObjectVar(self.type)
-            return And(And([self.contains(x) for x in other]), self.forall(var, Or([var == x for x in other])))
+        _consolas_assert(isinstance(other, list), '== only compares with a set literal (list) currently')
+
+        var = DeclareVar(self.type)
+        return And(And([self.contains(x) for x in other]), self.forall(var, Or([var == y for y in other])))
 
     def __mul__(self, other):
         return self.join(other)
@@ -623,6 +652,7 @@ def load_all_classes(descs):
         load_class_body(x)
     return [e for e in _all_enums] + classes
 
+
 def DefineObject(name, type, suspended=False):
     _consolas_assert(not (name in _all_objects), 'Object name "%s" is already used' % name)
 
@@ -630,8 +660,10 @@ def DefineObject(name, type, suspended=False):
     _all_objects[name] = object_
     return object_
 
+
 def DefineObjects(names, type, suspended=False):
     return [DefineObject(name, type, suspended) for name in names]
+
 
 def get_ancestors(clazz):
     result = []
