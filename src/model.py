@@ -49,6 +49,9 @@ class ConsolasElement:
         return self.z3_element
 
 
+Undefined = ConsolasElement()
+
+
 ##############################################################
 #
 # Definition of meta-model
@@ -363,6 +366,8 @@ class ObjectExpr(ConsolasExpr):
         return is_instance(other.z3(), actual_type(self.z3()))
 
     def __eq__(self, other):
+        if other is Undefined:
+            return self.undefined()
         return self.z3() == other.z3()
 
     def __ne__(self, other):

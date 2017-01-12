@@ -49,6 +49,10 @@ classes_yaml = """
 -
   name: Wordpress
   supertype: Service
+  reference: [{name: cache, type: Redis, mandatory: true}]
+-
+  name: Redis
+  supertype: Service
 -
   name: SmallVm
   supertype: Node
@@ -61,7 +65,7 @@ classes_yaml = """
 classes = yaml.load(classes_yaml)
 
 Element, Service, Node, Label, UniqueLabel, \
-FunctionLabel, StorageLabel, Db, Wordpress, SmallVm, LargeVm \
+FunctionLabel, StorageLabel, Db, Wordpress, Redis, SmallVm, LargeVm \
     = load_all_classes(classes)
 
 generate_meta_constraints()
@@ -75,6 +79,7 @@ i1 = DeclareVar(IntSort(), 'i1')
 db = DefineObject('db', Db)
 # wordpress = DefineObject('wordpress', Wordpress)
 wordpresses = DefineObjects(['wordpress%d'%n for n in range(0, 3)], Wordpress)
+redises = DefineObjects(['redis%d' % n for n in range(0, 3)], Redis, suspended=True)
 lb_wordpressdb, lb_cachedb = DefineObjects(['lb_wordpressdb', 'lb_cachedb'], FunctionLabel)
 lb_ssd, lb_disk = DefineObjects(['lb_ssd', 'lb_disk'], StorageLabel)
 vm1 = DefineObject('vm1', LargeVm, suspended=True)
@@ -105,30 +110,24 @@ meta_facts(
     Node.forall(n1, Or(n1['slots'] <= 0, n1['host'].count() <= n1['slots']))
 )
 
-# Labels set up by users
-# lineno_label_assings = inspect.currentframe().f_lineno
-# label_assigns = [
-#     db['label'] == [lb_wordpressdb],
-#     wordpress['label'] == [],
-#     wordpress['affinityLabel'] == lb_wordpressdb,
-#     vm1['slots'] == 2,
-#     vm1['label'].contains(lb_ssd),
-#     vm2['label'].contains(lb_disk),
-#     db['nodeLabel'].contains(lb_ssd),
-#     db['nodeDirect'] == vm2
-# ]
+# System-specific constraints
+w1 = ObjectVar(Wordpress, 'w1')
+meta_facts(
+    Wordpress.forall(w1, w1['link'].contains(w1['cache']))
+)
+
 lineno_label_assings = inspect.currentframe().f_lineno
 label_assigns = [
     db['label'] == [lb_wordpressdb],
     db['nodeLabel'].contains(lb_ssd),
-    Wordpress['affinityLabel'] == lb_wordpressdb,
+    Wordpress['affinityLabel'] == Undefined,
     Wordpress['label'] == [],
-    # Wordpress.forcevalue('ports', [8080]),
+    Wordpress['ports'] == [8080],
     # Wordpress['nNodeLabel'] == [lb_ssd],
     SmallVm['slots'] == 4,
     LargeVm['slots'] == 16,
-    vm1['label'].contains(lb_ssd),
-    LargeVm.forall(n1, n1['label'].contains(lb_disk))
+    vm3['label'].contains(lb_ssd)
+    # LargeVm.forall(n1, n1['label'].contains(lb_disk))
 ]
 
 solver = Solver()
