@@ -1,0 +1,36 @@
+Model      ::= Class | Object
+
+Expr       ::= ObjectExpr | SetExpr | NumExpr | BoolExpr
+
+ObjExpr    ::= ObjectConst
+             | ObjExpr[STR] #STR is name of a single reference
+             | Undefined
+
+ObjectConst::= Object | ObjConst(Class, STR_NAME)
+             
+SetExpr    ::= ObjExpr[STR] #STR is name of a multiple attribute or reference
+             | Class.allinstances()
+             | SetExpr.filter(VarDecl, BoolExpr)
+             | SetExpr.map(VarDecl, Expr)
+             | SetExpr * SetExpr
+             | [Expr (, Expr)*]
+            
+VarDecl    ::= NumConst | ObjectConst | [ObjectConst (, ObjectConst)*]
+
+NumExpr    ::= ObjExpr[STR] #STR is name of single attribute
+             | SetExpr.count()
+             | SetExpr.sum()
+             | NumExpr ( + | - | * | / | % |) NumExpr
+
+BoolExpr   ::= ObjExpr == ObjExpr | ObjExpr.alive()
+             | ObjExpr.isinstance(Class)  | ObjExpr.sametype(ObjExpr)
+             | SetExpr.contains(ObjectExpr) | SetExpr == SetExpr
+             | SetExpr.forall(VarDecl, BoolExpr)
+             | SetExpr.exists(VarDecl, BoolExpr)
+             | NumExpr ( > | < | == | != | >= | <= ) NumExpr
+             | Not(BoolExpr) | (And, Or, Implies) (BoolExpr, BoolExpr)
+
+Class.opr(VarDecl, Expr) === Class.allinstance().opr(VarDecl, Expr)
+            # opr = filter | map | forall | exists
+Class[str] == Expr === Type.allinstance().forall(var, var == Expr)
+Class1 * Class2 === Class1.allinstances() * Class2.allinstances()
