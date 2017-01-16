@@ -46,10 +46,10 @@ class TestModelCreation(unittest.TestCase):
         # h = host(deploy(d1.z3()), d1.z3())
         # print substitute(h, (d1.z3(), x.z3()))
 
-        self._assert_expr_in_string(d1['deploy']['host'].contains(d1), 'host(deploy(d1), d1)')
+        self._assert_expr_in_string(d1.deploy.host.contains(d1), 'host(deploy(d1), d1)')
 
         self._assert_expr_in_string(
-            d1['deploy']['host'].forall(x, x['mem'] < 10),
+            d1.deploy.host.forall(x, x.mem < 10),
             'ForAll(x,Implies(host(deploy(d1),x),mem(x)<10))'
         )
 
@@ -77,6 +77,11 @@ class TestModelCreation(unittest.TestCase):
         )
 
         print self.DockerImage.all_instances().filter(x, x['mem']>10).map(x, x['deploy']).contains(y)
+
+    def test_getattr(self):
+        d1 = ObjectConst(self.DockerImage, 'd1')
+        v1 = ObjectConst(self.Vm, 'v1')
+        print d1.deploy == v1
 
     def test_join_set(self):
         all_di = self.DockerImage.all_instances()

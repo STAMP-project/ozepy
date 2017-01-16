@@ -97,7 +97,7 @@ meta_facts(
         ))
     )),
     Service.forall(s1, Or(
-        s1['affinityLabel'].undefined(),
+        s1.affinityLabel.undefined(),
         s1['deploy']['host'].exists(s2, And(s2 != s1, s2['label'].contains(s1['affinityLabel'])))
     )),
     Service.forall(s1, s1['link'].forall(s2, s2['deploy'] == s1['deploy'])),

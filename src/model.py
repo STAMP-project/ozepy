@@ -48,6 +48,13 @@ class ConsolasElement:
         """Convert a Consolas Element to a Z3 expression"""
         return self.z3_element
 
+    def __str__(self):
+        return str(self.z3_element)
+
+    def __nonzero__(self):
+        return True
+
+
 
 Undefined = ConsolasElement()
 
@@ -130,6 +137,12 @@ class Class(ConsolasElement):
     def __repr__(self):
         return self.name
 
+    def __eq__(self, other):
+        return self.name == other.name
+
+    def __ne__(self, other):
+        return self.name != other.name
+
     def forall(self, var, expr):
         return self.all_instances().forall(var, expr)
 
@@ -161,6 +174,11 @@ class Class(ConsolasElement):
         _consolas_assert(item in self.get_all_feature_names(), '%s is not a defined feature' % item)
         return ForceValueSeed(self, item)
 
+    def __getattr__(self, item):
+        if not item.startswith('__'):
+            return self.__getitem__(item)
+        else:
+            raise ConsolasException("What the hell is %s %s and %s" % (self.__class__, self, item))
 
 class ForceValueSeed(ConsolasElement):
 
@@ -184,6 +202,7 @@ class CompositeClass(Class):
         lst = list(self.types)
         lst.append(type)
         return CompositeClass(*lst)
+
 
 class Feature(ConsolasElement):
 
@@ -301,6 +320,10 @@ class Object(ConsolasElement):
     def __getitem__(self, item):
         return self.get_constant()[item]
 
+    def __getattr__(self, item):
+        if not item.startswith('__'):
+            return self.__getitem__(item)
+
     def sametype(self, other):
         return self.get_constant().sametype(other)
 
@@ -309,6 +332,7 @@ class Object(ConsolasElement):
 
     def isinstance(self, class_):
         return self.get_constant().isinstance(class_)
+
 
 
 class ConsolasExpr(ConsolasElement):
@@ -350,6 +374,10 @@ class ObjectExpr(ConsolasExpr):
             return ObjectExpr(z3fun(self.z3()), _range)
         elif isinstance(feature, Attribute):
             return z3fun(self.z3())
+
+    def __getattr__(self, item):
+        if not item.startswith('__'):
+            return self.__getitem__(item)
 
     def undefined(self):
         return self.z3() == nil
@@ -588,6 +616,9 @@ class SetExpr(ConsolasExpr):
 
     def __str__(self):
         return '[%s]' % self.guard
+
+    # def __contains__(self, item):
+    #     return self.contains(item)
 
 _all_enums = {}
 _all_classes = {}

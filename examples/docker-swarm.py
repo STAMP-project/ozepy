@@ -90,13 +90,13 @@ generate_config_constraints()
 
 # General constraints simulating the behaviour of docker-swarm scheduler
 meta_facts(
-    Element.forall(e1, e1['label'].forall(
-        l1, Implies(l1.isinstance(UniqueLabel), Not(e1['label'].exists(
+    Element.forall(e1, e1.label.forall(
+        l1, Implies(l1.isinstance(UniqueLabel), Not(e1.label.exists(
             l2, And(l1.sametype(l2), l1 != l2))
         ))
     )),
     Service.forall(s1, Or(
-        s1['affinityLabel'].undefined(),
+        s1.affinityLabel == Undefined,
         s1['deploy']['host'].exists(s2, And(s2 != s1, s2['label'].contains(s1['affinityLabel'])))
     )),
     Service.forall(s1, s1['link'].forall(s2, s2['deploy'] == s1['deploy'])),

@@ -1,4 +1,5 @@
-Model      ::= Class | Object
+ModelElem  ::= Type | Object
+Type       ::= Class | NumericSort | BoolSort
 
 Expr       ::= ObjectExpr | SetExpr | NumExpr | BoolExpr
 
@@ -18,19 +19,19 @@ SetExpr    ::= ObjExpr[STR] #STR is name of a multiple attribute or reference
 VarDecl    ::= NumConst | ObjectConst | [ObjectConst (, ObjectConst)*]
 
 NumExpr    ::= ObjExpr[STR] #STR is name of single attribute
-             | SetExpr.count()
-             | SetExpr.sum()
-             | NumExpr ( + | - | * | / | % |) NumExpr
+             | SetExpr.count() | SetExpr.sum()
+             | NumExpr opr NumExpr # opr = + | - | * | / | %
 
 BoolExpr   ::= ObjExpr == ObjExpr | ObjExpr.alive()
              | ObjExpr.isinstance(Class)  | ObjExpr.sametype(ObjExpr)
              | SetExpr.contains(ObjectExpr) | SetExpr == SetExpr
              | SetExpr.forall(VarDecl, BoolExpr)
              | SetExpr.exists(VarDecl, BoolExpr)
-             | NumExpr ( > | < | == | != | >= | <= ) NumExpr
-             | Not(BoolExpr) | (And, Or, Implies) (BoolExpr, BoolExpr)
+             | NumExpr opr NumExpr # opr =  > | < | == | != | >= | <=
+             | Not(BoolExpr) | opr (BoolExpr, BoolExpr) # opr = And | Or | Implies
 
+#Auxiliaries
 Class.opr(VarDecl, Expr) === Class.allinstance().opr(VarDecl, Expr)
             # opr = filter | map | forall | exists
-Class[str] == Expr === Type.allinstance().forall(var, var == Expr)
+Class[STR] == Expr === Type.allinstance().forall(var, var[STR] == Expr)
 Class1 * Class2 === Class1.allinstances() * Class2.allinstances()
