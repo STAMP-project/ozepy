@@ -1,0 +1,28 @@
+# docker-machine create -d virtualbox default && eval $(docker-machine env)
+docker-machine create -d virtualbox mh-keystore
+eval "$(docker-machine env mh-keystore)"
+docker run -d \
+ -p "8500:8500" \
+ -h "consul" \
+ progrium/consul -server -bootstrap
+
+sleep 5
+
+docker-machine create \
+ -d virtualbox \
+ --swarm --swarm-master \
+ --swarm-discovery="consul://$(docker-machine ip mh-keystore):8500" \
+ --engine-opt="cluster-store=consul://$(docker-machine ip mh-keystore):8500" \
+ --engine-opt="cluster-advertise=eth1:2376" \
+ mymaster
+
+docker-machine create -d virtualbox \
+     --swarm \
+     --swarm-discovery="consul://$(docker-machine ip mh-keystore):8500" \
+     --engine-opt="cluster-store=consul://$(docker-machine ip mh-keystore):8500" \
+     --engine-opt="cluster-advertise=eth1:2376" \
+     myworker1
+
+eval $(docker-machine env --swarm mymaster)
+
+docker-machine ls
