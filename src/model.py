@@ -149,6 +149,9 @@ class Class(ConsolasElement):
     def exists(self, var, expr):
         return self.all_instances().exists(var, expr)
 
+    def existsOne(self, var, expr):
+        return self.all_instances().existsOne(var, expr)
+
     def otherwise(self, var, expr):
         return self.all_instances().exists(var, expr)
 
@@ -514,6 +517,11 @@ class SetExpr(ConsolasExpr):
         mainvar, guard, body = self._prepare_quantifier(var, expr)
         return Exists(mainvar, And(guard, body))
 
+    def existsOne(self, var, expr):
+        v = ObjectVar(self.type)
+        expr2 = PartialExpr(var, expr).bindOne(v).complete()
+        return And(self.exists(var, expr), self.forall(v, Or(v==var, Not(expr2))))
+
     def otherwise(self, var, expr):
         mainvar, guard, body = self._prepare_quantifier(var, expr)
         return ForAll(mainvar, Or(guard, body))
@@ -783,6 +791,12 @@ def get_all_meta_facts():
 
 def get_all_config_facts():
     return list(_config_constraints);
+
+
+def once_for_all():
+    #generate_meta_constraints()
+    #generate_config_constraints()
+    return list(_meta_constraints) + list(_config_constraints)
 
 
 def generate_meta_constraints():

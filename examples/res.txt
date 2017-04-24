@@ -1,0 +1,36 @@
+Time eclipsed: 0.0875082015991
+
+Step: 0
+Man Left 	Wolf Left 	Goat Left 	Cabbage Left
+Step: 1
+Man Right 	Wolf Left 	Goat Right 	Cabbage Left
+Step: 2
+Man Left 	Wolf Left 	Goat Right 	Cabbage Left
+Step: 3
+Man Right 	Wolf Right 	Goat Right 	Cabbage Left
+Step: 4
+Man Left 	Wolf Right 	Goat Left 	Cabbage Left
+Step: 5
+Man Right 	Wolf Right 	Goat Left 	Cabbage Right
+Step: 6
+Man Left 	Wolf Right 	Goat Left 	Cabbage Right
+Step: 7
+Man Right 	Wolf Right 	Goat Right 	Cabbage Right
+
+Step: 0
+Man Wolf Goat Cabbage ~~~>
+Step: 1
+Wolf Cabbage ~~~> Man Goat
+Step: 2
+Man Wolf Cabbage ~~~> Goat
+Step: 3
+Cabbage ~~~> Man Wolf Goat
+Step: 4
+Man Goat Cabbage ~~~> Wolf
+Step: 5
+Goat ~~~> Man Wolf Cabbage
+Step: 6
+Man Goat ~~~> Wolf Cabbage
+Step: 7
+~~~> Man Wolf Goat Cabbage
+finished

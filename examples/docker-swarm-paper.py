@@ -14,25 +14,27 @@ classes_yaml = """
   name: Element
   reference: [{name: label, type: Label, multiple: true}]
 -
-  name: Service
+  name: Container
   supertype: Element
+  abstract: True
   attribute:
     - {name: ports, type: Integer, multiple: true}
   reference:
     - {name: deploy, type: Node, mandatory: true}
     - {name: affinityLabel, type: Label}
+    - {name: naffinity, type: Label}
     - {name: nodeLabel, type: Label, multiple: true}
-    - {name: nNodeLabel, type: Label, multiple: true}
-    - {name: nodeDirect, type: Node}
-    - {name: link, type: Service, multiple: true}
+    - {name: link, type: Container, multiple: true}
 -
   name: Node
   supertype: Element
+  abstract: True
   attribute:
     - {name: isMaster, type: Boolean}
     - {name: slots, type: Integer}
+    - {name: price, type: Integer}
   reference:
-    - {name: host, type: Service, multiple: true, opposite: deploy}
+    - {name: host, type: Container, multiple: true, opposite: deploy}
 -
   name: Label
 -
@@ -40,53 +42,69 @@ classes_yaml = """
   supertype: Label
 # Below are the service definitions from Docker-Compose file
 -
-  name: FunctionLabel
+  name: TypeLabel
   supertype: Label
 -
   name: StorageLabel
   supertype: UniqueLabel
 -
-  name: Db
-  supertype: Service
+  name: Resource
+  supertype: Label
 -
-  name: Wordpress
-  supertype: Service
-  reference: [{name: cache, type: Redis, mandatory: true}]
+  name: Throughput
+  supertype: UniqueLabel
 -
-  name: Redis
-  supertype: Service
+  name: Web
+  supertype: Container
 -
-  name: SmallVm
+  name: Admin
+  supertype: Container
+-
+  name: SingleContainer
+  supertype: Container
+-
+  name: Fast
   supertype: Node
 -
-  name: LargeVm
+  name: Solid
   supertype: Node
 """
 
 
 classes = yaml.load(classes_yaml)
 
-Element, Service, Node, Label, UniqueLabel, \
-FunctionLabel, StorageLabel, Db, Wordpress, Redis, SmallVm, LargeVm \
+Element, Container, Node, Label, UniqueLabel, \
+TypeLabel, StorageLabel, Resource, Throughput, Web, Admin, SingleContainer, Fast, Solid \
     = load_all_classes(classes)
 
 generate_meta_constraints()
 
+NWEB, NSN, NADM = (10, 9, 1)
+
 e1 = ObjectVar(Element, 'e1')
-s1, s2 = ObjectVars(Service, 's1', 's2')
+s1, s2 = ObjectVars(Container, 's1', 's2')
 n1, n2 = ObjectVars(Node, 'n1', 'n2')
-l1, l2 = ObjectVars(FunctionLabel, 'l1', 'l2')
+l1, l2 = ObjectVars(Label, 'l1', 'l2')
 i1 = DeclareVar(IntSort(), 'i1')
 
-db = DefineObject('db', Db)
-# wordpress = DefineObject('wordpress', Wordpress)
-wordpresses = DefineObjects(['wordpress%d'%n for n in range(0, 3)], Wordpress)
-redises = DefineObjects(['redis%d' % n for n in range(0, 3)], Redis, suspended=True)
-lb_wordpressdb, lb_cachedb = DefineObjects(['lb_wordpressdb', 'lb_cachedb'], FunctionLabel)
-lb_ssd, lb_disk = DefineObjects(['lb_ssd', 'lb_disk'], StorageLabel)
-vm1 = DefineObject('vm1', LargeVm, suspended=True)
-vm3, vm4 = DefineObjects(['vm3', 'vm4'], SmallVm, suspended=True)
+backupdb = DefineObject('backupdb', SingleContainer)
+db = DefineObject('db', SingleContainer)
+secondweb = DefineObject('secondweb', SingleContainer)
+gallery = DefineObject('gallery', SingleContainer)
+imageindex = DefineObject('imageindex', SingleContainer)
 
+webs = [DefineObject('web%d'%i, Web) for i in range(0, NWEB)]
+admins = [DefineObject('admin%d'%i, Admin) for i in range(0, NADM)]
+sns = [DefineObject('sn%d' % i, Node, suspended=True) for i in range(0, NSN)]
+
+master = DefineObject('master', Fast)
+slave = DefineObject('slave', Solid)
+
+
+ssd, disk = DefineObjects(['ssd', 'disk'], StorageLabel)
+high = DefineObject('high', Throughput)
+ram = DefineObject('ram', Resource)
+lbdb, lbui = DefineObjects(['lbdb', 'lbui'], TypeLabel)
 
 generate_config_constraints()
 
@@ -97,39 +115,76 @@ meta_facts(
             l2, And(l1.sametype(l2), l1 != l2))
         ))
     )),
-    Service.forall(s1, Or(
+    Container.forall(s1, Or(
         s1.affinityLabel == Undefined,
         s1['deploy']['host'].exists(s2, And(s2 != s1, s2['label'].contains(s1['affinityLabel'])))
     )),
-    Service.forall(s1, s1['link'].forall(s2, s2['deploy'] == s1['deploy'])),
-    Service.forall(s1, s1['nodeLabel'].forall(l1, s1['deploy']['label'].contains(l1))),
-    Service.forall(s1, s1['nNodeLabel'].forall(l1, Not(s1['deploy']['label'].contains(l1)))),
-    Service.forall(s1, Or(s1['nodeDirect'].undefined(), s1['nodeDirect'] == s1['deploy'])),
-    Service.forall(s1, s1['ports'].forall(
+    Container.forall(s1, Or(
+        s1.naffinity == Undefined,
+        s1['deploy']['host'].forall(s2, Not(s2['label'].contains(s1['naffinity'])))
+    )),
+    Container.forall(s1, s1['link'].forall(s2, s2['deploy'] == s1['deploy'])),
+    Container.forall(s1, s1['nodeLabel'].forall(l1, s1['deploy']['label'].contains(l1))),
+#    Container.forall(s1, s1['nNodeLabel'].forall(l1, Not(s1['deploy']['label'].contains(l1)))),
+#    Container.forall(s1, Or(s1['nodeDirect'].undefined(), s1['nodeDirect'] == s1['deploy'])),
+    Container.forall(s1, s1['ports'].forall(
         i1, s1['deploy']['host'].forall(s2, Or(s1 == s2, Not(s2['ports'].contains(i1))))
     )),
     Node.exists(n1, n1['isMaster']),
     Node.forall(n1, Or(n1['slots'] <= 0, n1['host'].count() <= n1['slots']))
 )
 
-# System-specific constraints
-w1 = ObjectVar(Wordpress, 'w1')
-meta_facts(
-    Wordpress.forall(w1, w1['link'].contains(w1['cache']))
-)
 
 lineno_label_assings = inspect.currentframe().f_lineno
 label_assigns = [
-    db['label'] == [lb_wordpressdb],
-    db['nodeLabel'].contains(lb_ssd),
-    Wordpress['affinityLabel'] == Undefined,
-    Wordpress['label'] == [],
-    Wordpress['ports'] == [8080],
-    # Wordpress['nNodeLabel'] == [lb_ssd],
-    SmallVm['slots'] == 4,
-    LargeVm['slots'] == 16,
-    vm3['label'].contains(lb_ssd)
-    # LargeVm.forall(n1, n1['label'].contains(lb_disk))
+    db['label'] == [lbdb],
+    db['nodeLabel'].contains(ssd),
+    db['link'] == [],
+    db['ports'] == [],
+    db['affinityLabel'] == Undefined,
+    db['naffinity'] == Undefined,
+    Web['affinityLabel'] == Undefined,
+    Web['label'] == [lbui, ram],
+    Web['ports'] == [8080],
+    Web['naffinity'] == Undefined,
+    Web['nodeLabel'] == [],
+    Web['link'] == [],
+    secondweb['naffinity'] == lbui,
+    secondweb['label'] == [],
+    secondweb['nodeLabel']==[],
+    secondweb['link'] == [],
+    secondweb['ports'] == [],
+    secondweb['affinityLabel'] == Undefined,
+    backupdb['label'] == [],
+    backupdb['naffinity'] == lbdb,
+    backupdb['nodeLabel'] == [],
+    backupdb['link'] == [],
+    backupdb['ports'] == [],
+    gallery['nodeLabel'] == [high],
+    gallery['label'] == [],
+    gallery['naffinity'] == Undefined,
+    gallery['affinityLabel'] == Undefined,
+    gallery['link'] == [],
+    gallery['ports'] == [],
+    imageindex['label'] == [ram],
+    imageindex['link'] == [gallery],
+    imageindex['naffinity'] == Undefined,
+    imageindex['affinityLabel'] == Undefined,
+    imageindex['nodeLabel'] == [],
+    imageindex['ports'] == [],
+    Admin['label'] == [ram],
+    # Admin['naffinity'] == Undefined,
+    Admin['affinityLabel'] == Undefined,
+    Admin['nodeLabel'] == [],
+    Admin['ports'] == [],
+    Admin['link'] == [],
+    Fast['label'] == [high],
+    Fast['slots'] == 3,
+    Fast['isMaster'] == True,
+    Solid['label'] == [ssd],
+    Solid['slots'] == 50,
+    Fast['price'] == 5,
+    Solid['price'] == 3
 ]
 
 solver = Solver()
@@ -196,23 +251,28 @@ def check_constant_propositions():
         also prints a sample scheduling that break these propositions
     :return:
     '''
+    count_ram = lambda x: x['host'].filter(s1, s1['label'].contains(ram)).count()
     ps = set()
     assumptions = []
     proposition_lineno = inspect.currentframe().f_lineno
-    propositions = [
-        And([wp['deploy'].alive() for wp in wordpresses]),
-        And([wp['deploy'] == db['deploy'] for wp in wordpresses]),
-        And([wp['deploy'] == vm3 for wp in wordpresses]),
-        And([wp['label'].count() == 0 for wp in wordpresses])
+    assertions = [
+        Not(imageindex['deploy'] == db['deploy']),
+        Web.exists(s1, Or(s1['deploy']==imageindex['deploy'], s1['deploy']==db['deploy'])),
+        Node.join(Node).forall([n1, n2], count_ram(n1)-count_ram(n2) <= 1)
     ]
 
-    original_text = record_original_text(propositions, proposition_lineno)
-    for c in propositions:
-        p = Bool(original_text[c])
-        assumptions.append(Implies(p, Not(c)))
-        ps.add(p)
+    original_text = record_original_text(assertions, proposition_lineno)
+    ps = set([Bool(original_text[c]) for c in assertions])
+    solver.add(*[Implies(p, Not(c)) for p, c in zip(ps, assertions)])
 
-    solver.add(*assumptions)
+
+    # for c in assertions:
+    #     p = Bool(original_text[c])
+    #     assumptions.append(Implies(p, Not(c)))
+    #     ps.add(p)
+
+    # label_assigns.append(Admin['naffinity'] == lbui)
+    # solver.add(*assumptions)
     solver.add(*label_assigns)
 
     if solver.check() == unsat:
@@ -237,21 +297,22 @@ def optimize_scheduling():
     optimize.add(*get_all_config_facts())
     optimize.add(*label_assigns)
 
-    optimize.maximize(Node.all_instances().count())
+    optimize.minimize(Node.all_instances().map(n1, n1['price']).sum())
+    optimize.minimize(master['host'].filter(s1, s1['label'].contains(ram)).count())
     if optimize.check() == sat:
         print_model_deploy(optimize.model())
     else:
         print "no scheduling under current labeling"
 
-solver.push()
-t = timeit.timeit(check_conflicting_labels, number=1)
-print "Time for checking labels:", t, "\n"
-solver.pop()
+# solver.push()
+# t = timeit.timeit(check_conflicting_labels, number=1)
+# print "Time for checking labels:", t, "\n"
+# solver.pop()
 
-solver.push()
-t = timeit.timeit(check_constant_propositions, number=1)
-print "Time for checking propositions:", t, "\n"
-solver.pop()
+# solver.push()
+# t = timeit.timeit(check_constant_propositions, number=1)
+# print "Time for checking propositions:", t, "\n"
+# solver.pop()
 
 solver.push()
 t = timeit.timeit(optimize_scheduling, number=1)
