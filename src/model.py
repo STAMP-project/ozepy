@@ -881,7 +881,10 @@ def generate_config_constraints():
                     config_fact(oconst[feature] == v.get_constant())
             else:
                 _consolas_assert(isinstance(feature, Reference), 'Multiple Attributes not supported yet...')
-                config_fact(oconst[feature].contains(v))
+                if isinstance(v, list):
+                    config_fact(oconst[feature] == v)
+                else:
+                    config_fact(oconst[feature].contains(v))
 
     return _config_constraints
 

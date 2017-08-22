@@ -79,7 +79,7 @@ TypeLabel, StorageLabel, Resource, Throughput, Web, Admin, SingleContainer, Fast
 
 generate_meta_constraints()
 
-NWEB, NSN, NADM = (10, 9, 1)
+NWEB, NSN, NADM = (8, 7, 1)
 
 e1 = ObjectVar(Element, 'e1')
 s1, s2 = ObjectVars(Container, 's1', 's2')
@@ -304,15 +304,15 @@ def optimize_scheduling():
     else:
         print "no scheduling under current labeling"
 
-# solver.push()
-# t = timeit.timeit(check_conflicting_labels, number=1)
-# print "Time for checking labels:", t, "\n"
-# solver.pop()
+solver.push()
+t = timeit.timeit(check_conflicting_labels, number=1)
+print "Time for checking labels:", t, "\n"
+solver.pop()
 
-# solver.push()
-# t = timeit.timeit(check_constant_propositions, number=1)
-# print "Time for checking propositions:", t, "\n"
-# solver.pop()
+solver.push()
+t = timeit.timeit(check_constant_propositions, number=1)
+print "Time for checking propositions:", t, "\n"
+solver.pop()
 
 solver.push()
 t = timeit.timeit(optimize_scheduling, number=1)
