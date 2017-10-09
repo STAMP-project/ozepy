@@ -314,6 +314,9 @@ class Object(ConsolasElement):
             current = current.supertype
         return False
 
+    def __eq__(self, other):
+        return self.name == other.name
+
     def __str__(self):
         return self.name
 
@@ -636,6 +639,9 @@ _meta_constraints = []
 _config_constraints = []
 
 
+def get_all_objects():
+    return _all_objects.values();
+
 def DefineClass(name, supertype=None, abstract=False):
     _consolas_assert(not (name in _all_classes), 'Class name "%s" is already used' % name)
 
@@ -696,6 +702,10 @@ def load_all_classes(descs):
         load_class_body(x)
     return [e for e in _all_enums] + classes
 
+
+def DistinctConsts(*consts):
+    z3consts = [o.z3() for o in consts]
+    return Distinct(*z3consts)
 
 def DefineObject(name, type, suspended=False):
     _consolas_assert(not (name in _all_objects), 'Object name "%s" is already used' % name)

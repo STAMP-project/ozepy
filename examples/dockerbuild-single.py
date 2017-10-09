@@ -8,8 +8,7 @@ import linecache
 import timeit
 import itertools
 
-NSPAR = 4
-NWANTED = 2
+NSPAR = 3
 
 classes_yaml = """
 -
@@ -114,8 +113,8 @@ br_python_alpine = DefineObject('br_python_alpine', BuildRule)\
 br_python_ubuntu = DefineObject('br_python_ubuntu', BuildRule)\
     .force_value('requires', [ubuntu])\
     .force_value('adds', [python])
-br_java8_alpine = DefineObject('br_java8_alpine', BuildRule)\
-    .force_value('requires', [alpine])\
+br_java8_ubuntu = DefineObject('br_java8_ubuntu', BuildRule)\
+    .force_value('requires', [ubuntu])\
     .force_value('adds', [java8])
 br_tomcat7_java = DefineObject('br_tomcat7_java', BuildRule)\
     .force_value('requires', [java]).force_value('adds', [tomcat7])
@@ -163,7 +162,7 @@ meta_facts(
     ))
 )
 
-solver = Solver()
+solver = Optimize()
 solver.add(*get_all_meta_facts())
 solver.add(*get_all_config_facts())
 
@@ -174,8 +173,8 @@ solver.add(*get_all_config_facts())
 def require_feature(w, f):
     return w.features.exists(f1, Or(f1 == f, f1.allsup.contains(f)))
 
-def require_feature_all(wantedlist, featurelist):
-    return And([And([require_feature(w,f) for f in featurelist]) for w in wantedlist])
+def require_feature_all(wanted, featurelist):
+    return And([require_feature(wanted,f) for f in featurelist])
 
 # solver.add(
 #     require_feature(wanted, java),
@@ -183,37 +182,47 @@ def require_feature_all(wantedlist, featurelist):
 #     require_feature(wanted, ubuntu)
 # )
 
-wantedlist = [ObjectConst(Image, 'wanted%d'%i) for i in range(0, NWANTED)]
-solver.add(And([w.isinstance(Image) for w in wantedlist]))
-solver.add(And([w.alive() for w in wantedlist]))
-solver.add(require_feature_all(wantedlist, [appserver, python]))
-solver.add((And([
-    w1.features.exists(f1, Not(w2.features.contains(f1)))
-    for (w1, w2) in itertools.combinations(wantedlist, 2)
-])))
-solver.add(wantedlist[0] == images[0], wantedlist[1]==images[1])
+wanted = ObjectConst(Image, 'wanted')
+solver.add(wanted.isinstance(Image))
+solver.add(wanted.alive())
+solver.add(require_feature_all(wanted, [appserver, python]))
 
+def get_wanted(model):
+    result = cast_all_objects(model)
+    for i in get_all_objects():
+        if str(model.eval(wanted == i)) == 'True':
+            return result[str(i)]
 
 
 def print_model_deploy(model):
     result = cast_all_objects(model)
-    for wanted in wantedlist:
-        toprint = ''
-        v = ''
-        # print result
-        # print model.eval(wanted == images[2])
+    v = get_wanted(model)
+    toprint = '\# %s: ' % v['features']
+
+    while True:
+        try:
+            toprint = toprint + '%s(%s) -> '%(v['name'], v['using'])
+            v = result[v['from']]
+        except:
+            toprint = toprint + v['name']
+            break
+    print toprint
+
+covered = []
+
+def find_covered_features(model):
+    v = get_wanted(model)
+    for f in v['features']:
         for i in get_all_objects():
-            if str(model.eval(wanted == i)) == 'True':
-                v = result[str(i)]
-                toprint = '\# %s: ' % v['features']
-        while True:
-            try:
-                toprint = toprint + '%s(%s) -> '%(v['name'], v['using'])
-                v = result[v['from']]
-            except:
-                toprint = toprint + v['name']
-                break
-        print toprint
-print timeit.timeit(solver.check, number=1)
-print_model_deploy(solver.model())
+            if i.name == f and not (i in covered):
+                covered.append(i)
+    print 'features covered: %s' % covered
+
+for i in range(0, 3):
+    print 'Image number %d in %.2f seconds.>>' % (i, timeit.timeit(solver.check, number=1))
+    print_model_deploy(solver.model())
+    find_covered_features(solver.model())
+    solver.maximize(wanted.features.filter(f1, And([Not(f1 == fea) for fea in covered])).count())
+    print ''
+
 
