@@ -1,1 +1,1 @@
-![Alt text](doc/arch.png "Generation framework architecture")
+![Alt text](doc/arch2.png "Generation framework architecture")
