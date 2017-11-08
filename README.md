@@ -2,6 +2,12 @@
 Z3 front-end on object-oriented systems - an Alloy-like modeller, but on an SMT solver! 
 Working with Z3-4.5.0 and above
 
+# install
+
+```bash docker run -it songhui/ozepy```
+
+Inside the container, you can use ```bash python dockerbuild-single.py``` to try one of the files in the examples folder.
+
 # Meta-model definition
 
 A meta-model is defined as a set of classes. We allow the definition of classes using the core concepts from MOF standard, 
