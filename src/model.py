@@ -642,6 +642,11 @@ _config_constraints = []
 def get_all_objects():
     return _all_objects.values();
 
+
+def get_object_by_name(name):
+    return _all_objects[name]
+
+
 def DefineClass(name, supertype=None, abstract=False):
     _consolas_assert(not (name in _all_classes), 'Class name "%s" is already used' % name)
 
