@@ -1,0 +1,6 @@
+images:
+  Xwiki9Tomcat8JDK9:
+    name: xwiki9mysql
+    tag: tomcat8-openjdk-9
+    features: [xwiki9mysql, tomcat8, openjdk9]
+    dep: [mysql]
