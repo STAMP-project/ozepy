@@ -7,23 +7,17 @@ composes:
         depends_on: [mysql]
         image: xwiki9mysql:tomcat8-openjdk-9
   compose1:
-    features: [mysql8, xwiki9mysql, tomcat8, openjdk9, postgres9]
+    features: [mysql8, xwiki9mysql, tomcat8, openjdk9]
     services:
       mysql: {image: 'mysql:9'}
-      postgres:
-        depends_on: [mysql]
-        image: postgres:9
       web:
-        depends_on: [mysql, postgres]
+        depends_on: [mysql]
         image: xwiki9mysql:tomcat8-openjdk-9
   compose2:
-    features: [mysql8, xwiki9mysql, tomcat8, openjdk9, postgres10]
+    features: [mysql8, xwiki9mysql, tomcat8, openjdk9]
     services:
-      mysql:
-        depends_on: [mysql]
-        image: mysql:9
-      postgres: {image: 'postgres:10'}
+      mysql: {image: 'mysql:9'}
       web:
-        depends_on: [mysql, postgres]
+        depends_on: [mysql]
         image: xwiki9mysql:tomcat8-openjdk-9
 watching: [web, postgres, mysql]

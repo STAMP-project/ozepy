@@ -1,0 +1,21 @@
+images:
+  Xwiki8MysqlTomcat85OpenJdk8:
+    dep: [mysql]
+    features: [xwiki8mysql, openjdk8, tomcat85]
+    name: Xwiki8Mysql
+    tag: Tomcat85-openjdk-8
+  Xwiki8PostgresTomcat7OpenJdk8:
+    dep: [postgres]
+    features: [tomcat7, openjdk8, xwiki8postgres]
+    name: Xwiki8Postgres
+    tag: Tomcat7-openjdk-8
+  Xwiki9MysqlTomcat9OpenJdk9:
+    dep: [mysql]
+    features: [xwiki9mysql, tomcat9, openjdk9]
+    name: Xwiki9Mysql
+    tag: Tomcat9-openjdk-9
+  Xwiki9PostgresTomcat8OpenJdk8:
+    dep: [postgres]
+    features: [xwiki9postgres, tomcat8, openjdk8]
+    name: Xwiki9Postgres
+    tag: Tomcat8-openjdk-8

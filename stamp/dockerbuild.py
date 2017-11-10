@@ -108,6 +108,7 @@ wanted = ObjectConst(Image, 'wanted')
 
 buildchains = []
 image_spec = None
+resultbuildimages = []
 
 def get_wanted(model):
     result = cast_all_objects(model)
@@ -115,6 +116,7 @@ def get_wanted(model):
         if str(model.eval(wanted == i)) == 'True':
             return result[str(i)]
 
+ampimages = dict()
 
 def print_model_deploy(model):
     result = cast_all_objects(model)
@@ -127,16 +129,39 @@ def print_model_deploy(model):
         'features': v['features']
     }
     buildchains.append(bc_item)
+    newkey = ''
+    newname = None
+    newtag = None
+    newfeatures = v['features']
+    dep = []
     while True:
-        try:
+        if 'using' in v:
+            if newname is None:
+                newname = v['using']
+            else:
+                if newtag is None:
+                    newtag = v['using']
+                else:
+                    newtag = newtag + '-' + v['using']
+            newkey = newkey + v['using']
+            for x in image_spec['buildingrules'][v['using']].get('depends', []):
+                dep.append(x)
             toprint = toprint + '%s(%s) -> '%(v['name'], v['using'])
             chain.append({'rule': v['using']})
             v = result[v['from']]
-        except:
+        else:
             toprint = toprint + v['name']
             dimage = image_spec['downloadimages'][v['name']]
             chain.append({'name': dimage['name'], 'tag': dimage['tag']})
+            newtag = '%s-%s-%s' % (newtag, dimage['name'], dimage['tag'])
+            newkey = newkey + v['name']
             break
+    ampimages[newkey] = {
+        'name': newname.lower(),
+        'tag': newtag.lower(),
+        'features': newfeatures,
+        'dep': dep
+    }
     print toprint
 
 covered = []
@@ -232,6 +257,10 @@ def generate(workingdir):
         print ''
     with open(workingdir + '/out/genimages.yml', 'w') as stream:
         yaml.dump({'buildchains': buildchains}, stream)
+        stream.close()
+
+    with open(workingdir + '/out/ampimages.yml', 'w') as stream:
+        yaml.dump({'images': ampimages}, stream)
         stream.close()
 
 HELPTEXT = 'dockerbuild.py -d <working dir>'

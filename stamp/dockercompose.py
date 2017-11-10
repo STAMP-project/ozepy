@@ -184,7 +184,7 @@ def generate(workingdir):
     meta_facts(
         Service.forall(s1, s1.image.dep.forall(
             f1, s1.dependson.exists(s2, s2.image.features.exists(f2, eq_or_child(f2, f1))))),
-        Service.forall(s1, Or(Feature.exists(f1, s1.image.dep.contains(f1)), Service.forall(s1, Not(s1.dependson.contains(s2))))),
+        Service.forall(s1, Or(Feature.exists(f1, s1.image.dep.contains(f1)), Service.forall(s2, Not(s1.dependson.contains(s2))))),
         Service.forall(s1, s1.imgfeature.forall(
             f1, s1.image.features.exists(f2, eq_or_child(f2, f1))
         )),
@@ -194,7 +194,7 @@ def generate(workingdir):
     solver = Optimize()
     solver.add(*get_all_meta_facts())
     solver.add(*get_all_config_facts())
-    solver.add(Service.forall(s1, s1.dependson.count() <= s1.image.dep.count()))
+    solver.add(Service.forall(s1, s1.dependson.count() <= 1))
 
 
     solver.push()
