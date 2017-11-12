@@ -36,11 +36,11 @@ classes_yaml = """
     {name: dependson, type: Service, multiple: true},
     {name: imgfeature, type: Feature, multiple: true}
   ]
-  attribute: [
-    {name: mandatory, type: Boolean}
-
-  ]
 """
+
+backupmeta = """attribute: [
+    {name: mandatory, type: Boolean}
+]"""
 
 def prepare_all_sup():
     features = [fea for fea in get_all_objects() if fea.type.name == 'Feature']
@@ -139,7 +139,7 @@ def generate(workingdir):
     with open(workingdir+'/features.yml', 'r') as stream:
         feature_spec = yaml.load(stream)
     declare_feature(feature_spec, None)
-    print features
+    # print features
     prepare_all_sup()
 
     with open(workingdir + '/composite.yml', 'r') as stream:
@@ -156,13 +156,13 @@ def generate(workingdir):
         img.force_value('dep', resolve_features(value.get('dep',[])))
 
     for name, value in specification['services'].iteritems():
-        srv = DefineObject('srv_' + name, Service, suspended=not value.get('mandatory', False))
+        srv = DefineObject('srv_' + name, Service, suspended=True) #not value.get('mandatory', False))
         services[name] = srv
         srv.force_value('imgfeature', resolve_features(value.get('imgfeature', [])))
-        srv.force_value('mandatory', value.get('mandatory', False))
+        # srv.force_value('mandatory', value.get('mandatory', False))
 
 
-
+    print "Start searching for compositions"
     # wanted = ObjectConst(Image, 'wanted')
 
     generate_config_constraints()
@@ -185,17 +185,20 @@ def generate(workingdir):
         Service.forall(s1, s1.image.dep.forall(
             f1, s1.dependson.exists(s2, s2.image.features.exists(f2, eq_or_child(f2, f1))))),
         Service.forall(s1, Or(Feature.exists(f1, s1.image.dep.contains(f1)), Service.forall(s2, Not(s1.dependson.contains(s2))))),
+        Service.forall(s1, Not(s1.dependson.contains(s1))),
         Service.forall(s1, s1.imgfeature.forall(
             f1, s1.image.features.exists(f2, eq_or_child(f2, f1))
-        )),
-        Service.forall(s1, Or(s1.mandatory, s1.alive() == Service.exists(s2, s2.dependson.contains(s1))))
+        ))
+        # Service.forall(s1, Or(s1.mandatory, s1.alive() == Service.exists(s2, s2.dependson.contains(s1))))
     )
 
     solver = Optimize()
     solver.add(*get_all_meta_facts())
     solver.add(*get_all_config_facts())
-    solver.add(Service.forall(s1, s1.dependson.count() <= 1))
+    #solver.add(Service.forall(s1, s1.dependson.count() <= 1))
 
+    for cst in specification['constraints']:
+        solver.add(eval(cst))
 
     solver.push()
     for i in range(0, 3):

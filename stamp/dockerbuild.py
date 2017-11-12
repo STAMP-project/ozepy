@@ -193,7 +193,7 @@ def generate(workingdir):
     with open(workingdir+'/features.yml', 'r') as stream:
         feature_spec = yaml.load(stream)
     declare_feature(feature_spec, None)
-    print features
+    # print features
     prepare_all_sup()
 
     with open(workingdir + '/images.yml', 'r') as stream:
