@@ -3,9 +3,6 @@
   <component name="ChangeListManager">
     <list default="true" id="5640ba79-017b-4b1d-96ae-ed3e9df5a2bb" name="Default" comment="">
       <change type="MODIFICATION" beforePath="$PROJECT_DIR$/stamp/dockerbuild.py" afterPath="$PROJECT_DIR$/stamp/dockerbuild.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/stamp/dockercompose.py" afterPath="$PROJECT_DIR$/stamp/dockercompose.py" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/stamp/xwiki/composite.yml" afterPath="$PROJECT_DIR$/stamp/xwiki/composite.yml" />
-      <change type="MODIFICATION" beforePath="$PROJECT_DIR$/stamp/xwiki/out/ampcompose.yml" afterPath="$PROJECT_DIR$/stamp/xwiki/out/ampcompose.yml" />
     </list>
     <option name="EXCLUDED_CONVERTED_TO_IGNORED" value="true" />
     <option name="TRACKING_ENABLED" value="true" />
@@ -59,7 +56,7 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="composite.yml" pinned="false" current-in-tab="true">
+      <file leaf-file-name="composite.yml" pinned="false" current-in-tab="false">
         <entry file="file://$PROJECT_DIR$/stamp/xwiki/composite.yml">
           <provider selected="true" editor-type-id="text-editor">
             <state relative-caret-position="336">
@@ -79,11 +76,11 @@
           </provider>
         </entry>
       </file>
-      <file leaf-file-name="dockerbuild.py" pinned="false" current-in-tab="false">
+      <file leaf-file-name="dockerbuild.py" pinned="false" current-in-tab="true">
         <entry file="file://$PROJECT_DIR$/stamp/dockerbuild.py">
           <provider selected="true" editor-type-id="text-editor">
-            <state relative-caret-position="-735">
-              <caret line="196" column="4" lean-forward="false" selection-start-line="196" selection-start-column="4" selection-end-line="196" selection-end-column="4" />
+            <state relative-caret-position="189">
+              <caret line="198" column="34" lean-forward="false" selection-start-line="198" selection-start-column="34" selection-end-line="198" selection-end-column="34" />
               <folding>
                 <element signature="e#0#23#0" expanded="true" />
               </folding>
@@ -156,9 +153,9 @@
         <option value="$PROJECT_DIR$/stamp/xwiki/out/genimages.yml" />
         <option value="$PROJECT_DIR$/stamp/xwiki/out/ampcompose.yml" />
         <option value="$PROJECT_DIR$/stamp/xwiki/ampimages.yml" />
-        <option value="$PROJECT_DIR$/stamp/dockerbuild.py" />
         <option value="$PROJECT_DIR$/stamp/xwiki/composite.yml" />
         <option value="$PROJECT_DIR$/stamp/dockercompose.py" />
+        <option value="$PROJECT_DIR$/stamp/dockerbuild.py" />
       </list>
     </option>
   </component>
@@ -510,7 +507,7 @@
     <layout>
       <window_info id="Project" active="false" anchor="left" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.19801463" sideWeight="0.5" order="0" side_tool="false" content_ui="combo" />
       <window_info id="TODO" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="6" side_tool="false" content_ui="tabs" />
-      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.31263858" sideWeight="0.5023072" order="7" side_tool="true" content_ui="tabs" />
+      <window_info id="Event Log" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="true" show_stripe_button="true" weight="0.3118757" sideWeight="0.5023072" order="7" side_tool="true" content_ui="tabs" />
       <window_info id="Run" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.39166668" sideWeight="0.49769282" order="2" side_tool="false" content_ui="tabs" />
       <window_info id="Version Control" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
       <window_info id="Python Console" active="false" anchor="bottom" auto_hide="false" internal_type="DOCKED" type="DOCKED" visible="false" show_stripe_button="true" weight="0.33" sideWeight="0.5" order="7" side_tool="false" content_ui="tabs" />
@@ -541,7 +538,7 @@
       <breakpoints>
         <line-breakpoint enabled="true" suspend="THREAD" type="python-line">
           <url>file://$PROJECT_DIR$/stamp/dockerbuild.py</url>
-          <line>248</line>
+          <line>250</line>
           <option name="timeStamp" value="2" />
         </line-breakpoint>
       </breakpoints>
@@ -573,7 +570,7 @@
         <state relative-caret-position="3906">
           <caret line="194" column="0" lean-forward="false" selection-start-line="194" selection-start-column="0" selection-end-line="194" selection-end-column="0" />
           <folding>
-            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#0#23#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -655,7 +652,7 @@
         <state relative-caret-position="4074">
           <caret line="194" column="0" lean-forward="false" selection-start-line="194" selection-start-column="0" selection-end-line="194" selection-end-column="0" />
           <folding>
-            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#0#23#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -733,7 +730,7 @@
         <state relative-caret-position="3906">
           <caret line="194" column="0" lean-forward="false" selection-start-line="194" selection-start-column="0" selection-end-line="194" selection-end-column="0" />
           <folding>
-            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#0#23#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -817,7 +814,7 @@
         <state relative-caret-position="609">
           <caret line="37" column="49" lean-forward="false" selection-start-line="37" selection-start-column="49" selection-end-line="37" selection-end-column="49" />
           <folding>
-            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#0#23#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -867,7 +864,7 @@
         <state relative-caret-position="3906">
           <caret line="194" column="0" lean-forward="false" selection-start-line="194" selection-start-column="0" selection-end-line="194" selection-end-column="0" />
           <folding>
-            <element signature="e#0#23#0" expanded="true" />
+            <element signature="e#0#23#0" expanded="false" />
           </folding>
         </state>
       </provider>
@@ -968,16 +965,6 @@
         </state>
       </provider>
     </entry>
-    <entry file="file://$PROJECT_DIR$/stamp/dockerbuild.py">
-      <provider selected="true" editor-type-id="text-editor">
-        <state relative-caret-position="-735">
-          <caret line="196" column="4" lean-forward="false" selection-start-line="196" selection-start-column="4" selection-end-line="196" selection-end-column="4" />
-          <folding>
-            <element signature="e#0#23#0" expanded="true" />
-          </folding>
-        </state>
-      </provider>
-    </entry>
     <entry file="file://$PROJECT_DIR$/stamp/dockercompose.py">
       <provider selected="true" editor-type-id="text-editor">
         <state relative-caret-position="312">
@@ -993,6 +980,16 @@
         <state relative-caret-position="336">
           <caret line="16" column="0" lean-forward="true" selection-start-line="0" selection-start-column="0" selection-end-line="17" selection-end-column="0" />
           <folding />
+        </state>
+      </provider>
+    </entry>
+    <entry file="file://$PROJECT_DIR$/stamp/dockerbuild.py">
+      <provider selected="true" editor-type-id="text-editor">
+        <state relative-caret-position="189">
+          <caret line="198" column="34" lean-forward="false" selection-start-line="198" selection-start-column="34" selection-end-line="198" selection-end-column="34" />
+          <folding>
+            <element signature="e#0#23#0" expanded="true" />
+          </folding>
         </state>
       </provider>
     </entry>

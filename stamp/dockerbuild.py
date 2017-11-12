@@ -196,6 +196,8 @@ def generate(workingdir):
     # print features
     prepare_all_sup()
 
+    print "Start search for images"
+
     with open(workingdir + '/images.yml', 'r') as stream:
         image_spec = yaml.load(stream)
     for name, value in image_spec['downloadimages'].iteritems():
