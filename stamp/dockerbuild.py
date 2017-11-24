@@ -248,6 +248,7 @@ def generate(workingdir):
     solver.add(wanted.alive())
 
     solver.add(require_feature_all(wanted, [features[x] for x in image_spec['mandatoryfeature']]))
+    solver.push()
 
     for cst in image_spec.get('constraints', []):
         solver.add(eval(cst))
@@ -255,10 +256,17 @@ def generate(workingdir):
     maxi = image_spec.get('maximal', 4)
 
     for i in range(0, maxi):
+        solver.pop()
+        oldlen = len(covered)
         print 'Image number %d in %.2f seconds.>>' % (i, timeit.timeit(solver.check, number=1))
-        print_model_deploy(solver.model())
+
         find_covered_features(solver.model())
+        if len(covered) == oldlen:
+            break
+        print_model_deploy(solver.model())
+        solver.push()
         solver.maximize(wanted.features.filter(f1, And([Not(f1 == fea) for fea in covered])).count())
+
         print ''
     with open(workingdir + '/out/genimages.yml', 'w') as stream:
         yaml.dump({'buildchains': buildchains}, stream)
