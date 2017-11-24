@@ -19,22 +19,25 @@ def _consolas_assert(cond, msg):
 
 
 # Here begins the definition of predefined Sorts and functions
+class TypePackage:
 
-_Type = DeclareSort('Type')
-_Inst = DeclareSort('Inst')
+    def __init__(self, name):
+        self.name = name
+        self.Type = DeclareSort('Type' + name)
+        self.Inst = DeclareSort('Inst' + name)
 
-# The 'Default' type and Instance
+        # The 'Default' type and Instance
 
-NilType = Const('NilType', _Type)
-nil = Const('nil', _Inst)
+        self.NilType = Const('NilType'+name, self.Type)
+        self.nil = Const('nil'+name, self.Inst)
 
-super_type = Function('super', _Type, _Type)
-actual_type = Function('actual_type', _Inst, _Type)
+        self.super_type = Function('super'+name, self.Type, self.Type)
+        self.actual_type = Function('actual_type'+name, self.Inst, self.Type)
 
-is_subtype = Function('is_subtype', _Type, _Type, BoolSort())
-is_instance = Function('is_instance', _Inst, _Type, BoolSort())
-alive = Function('alive', _Inst, BoolSort())
-is_abstract = Function('is_abstract', _Type, BoolSort())
+        self.is_subtype = Function('is_subtype'+name, self.Type, self.Type, BoolSort())
+        self.is_instance = Function('is_instance'+name, self.Inst, self.Type, BoolSort())
+        self.alive = Function('alive'+name, self.Inst, BoolSort())
+        self.is_abstract = Function('is_abstract'+name, self.Type, BoolSort())
 
 
 # Now begins the definition of models
@@ -78,10 +81,14 @@ class Class(ConsolasElement):
         :param supertype: super class
         :param abstract: An abstract class cannot be instantiated
         """
+        if supertype is None:
+            self.package = TypePackage(name)
+        else:
+            self.package = supertype.package
         self.name = name
         self.attributes = {}
         self.references = {}
-        self.z3_element = Const(name, _Type)
+        self.z3_element = Const(name, self.package.Type)
         self.supertype = supertype
         self.abstract = abstract
 
@@ -115,7 +122,12 @@ class Class(ConsolasElement):
 
     def all_instances(self):
         var = ObjectVar(self)
-        return SetExpr(PartialExpr(var, And(alive(var.z3()), is_instance(var.z3(), self.z3()))), self)
+        return SetExpr(
+            PartialExpr(
+                var,
+                And(self.package.alive(var.z3()), self.package.is_instance(var.z3(), self.z3()))),
+            self
+        )
 
     def compose_new_class(self, type):
         return CompositeClass(self, type)
@@ -233,9 +245,9 @@ class Attribute(Feature):
     def _create_z3_element(self):
         if self.multiple:
             # Do not support it in the first stage
-            self.z3_element = Function(self.name, _Inst, self.type, BoolSort())
+            self.z3_element = Function(self.name, self.parent.package.Inst, self.type, BoolSort())
         else:
-            self.z3_element = Function(self.name, _Inst, self.type)
+            self.z3_element = Function(self.name, self.parent.package.Inst, self.type)
 
 
 class Reference(Feature):
@@ -243,11 +255,11 @@ class Reference(Feature):
         self.z3_element = self._create_multiple_function() if self.multiple else self._create_single_function()
 
     def _create_single_function(self):
-        function = Function(self.name, _Inst, _Inst)
+        function = Function(self.name, self.parent.package.Inst, self.type.package.Inst)
         return function
 
     def _create_multiple_function(self):
-        function = Function(self.name, _Inst, _Inst, BoolSort())
+        function = Function(self.name, self.parent.package.Inst, self.type.package.Inst, BoolSort())
         return function
 
 
@@ -256,7 +268,7 @@ class Object(ConsolasElement):
     def __init__(self, name, type, suspended=False):
         self.name = name
         self.type = type
-        self.z3_element = Const(name, _Inst)
+        self.z3_element = Const(name, type.package.Inst)
         self.suspended = suspended
         self.solved_model = None
         self.forced_values = {}
@@ -296,13 +308,19 @@ class Object(ConsolasElement):
             return str(result) # suppose it is an enum item
         elif feature.is_reference() and not feature.multiple:
             for obj in _all_objects.values():
-                if str(model.eval(const[feature]==obj.get_constant())) == 'True':
-                    return str(obj)
+                if obj.type.package == feature.type.package:
+                    if str(model.eval(const[feature]==obj.get_constant())) == 'True':
+                        return str(obj)
         elif feature.is_reference() and feature.multiple:
             result = []
             for obj in _all_objects.values():
-                if str(model.eval(const[feature].contains(obj.get_constant()))) == 'True':
-                    result.append(str(obj))
+                if obj.type.package == feature.type.package:
+
+                    try:
+                        if str(model.eval(const[feature].contains(obj.get_constant()))) == 'True':
+                            result.append(str(obj))
+                    except:
+                        None;
             return result
         return None
 
@@ -338,7 +356,6 @@ class Object(ConsolasElement):
 
     def isinstance(self, class_):
         return self.get_constant().isinstance(class_)
-
 
 
 class ConsolasExpr(ConsolasElement):
@@ -386,18 +403,18 @@ class ObjectExpr(ConsolasExpr):
             return self.__getitem__(item)
 
     def undefined(self):
-        return self.z3() == nil
+        return self.z3() == self.type.package.nil
 
     def alive(self):
-        return alive(self.z3())
+        return self.type.package.alive(self.z3())
 
     def isinstance(self, clazz):
         _consolas_assert(isinstance(clazz, Class), 'We only check the type of object classes')
-        return is_instance(self.z3(), clazz.z3())
+        return self.type.package.is_instance(self.z3(), clazz.z3())
 
     def sametype(self, other):
         _consolas_assert(isinstance(other, ObjectExpr) or isinstance(other, Object), 'An Object or ObjectExpr is expected')
-        return is_instance(other.z3(), actual_type(self.z3()))
+        return self.type.package.is_instance(other.z3(), self.type.package.actual_type(self.z3()))
 
     def __eq__(self, other):
         if other is Undefined:
@@ -411,7 +428,7 @@ class ObjectExpr(ConsolasExpr):
 class ObjectConst(ObjectExpr):
 
     def __init__(self, type, name):
-        self.z3_element = Const(name, _Inst)
+        self.z3_element = Const(name, type.package.Inst)
         self.type = type
 
 
@@ -816,32 +833,65 @@ def once_for_all():
 
 def generate_meta_constraints():
     del _meta_constraints[:]
+    for class_ in _all_classes.itervalues():
+        if class_.supertype is None:
+            generate_meta_for_package(class_.package)
 
-    all_class_z3 = [i.z3() for i in _all_classes.values()] + [NilType]
+
+def generate_meta_for_package(package):
+
+    all_class_z3 = [i.z3() for i in _all_classes.values() if i.package == package] + [package.NilType]
+    all_relevant_classes = [i for i in _all_classes.values() if i.package == package]
     meta_fact(Distinct(*all_class_z3))
 
-    t1 = Const('t1', _Type)
-    t2 = Const('t2', _Type)
-    t3 = Const('t3', _Type)
-    i1 = Const('i1', _Inst)
-    i2 = Const('i2', _Inst)
+    t1 = Const('t1'+package.name, package.Type)
+    t2 = Const('t2'+package.name, package.Type)
+    t3 = Const('t3'+package.name, package.Type)
+    i1 = Const('i1'+package.name, package.Inst)
+    i2 = Const('i2'+package.name, package.Inst)
 
     meta_fact(ForAll(t1, Or([t1 == i for i in all_class_z3])))
-    meta_fact(And([super_type(x.z3()) ==
-                  (x.supertype.z3() if x.supertype else NilType)
-                  for x in _all_classes.values()]
+    meta_fact(And([package.super_type(x.z3()) ==
+                  (x.supertype.z3() if x.supertype else package.NilType)
+                  for x in _all_classes.values() if x.package == package]
                   ))
-    meta_fact(ForAll([t1, t2], is_subtype(t1, t2) == Or(super_type(t1) == t2, Exists(t3, And(super_type(t1)==t3, is_subtype(t3, t2))))))
-    meta_fact(ForAll([t1, i1], is_instance(i1, t1) == Or(actual_type(i1) == t1, is_subtype(actual_type(i1), t1))))
-    meta_fact(ForAll(t1, Implies(is_subtype(NilType, t1), t1 == NilType)))
-    meta_fact(ForAll(i1, Or(Not(alive(i1)), Or([actual_type(i1) == x for x in all_class_z3]))))
+    meta_fact(ForAll(
+        [t1, t2],
+        package.is_subtype(t1, t2) == Or(
+            package.super_type(t1) == t2,
+            Exists(t3, And(package.super_type(t1)==t3, package.is_subtype(t3, t2)))
+        )
+    ))
+    meta_fact(ForAll(
+        [t1, i1],
+        package.is_instance(i1, t1) == Or(
+            package.actual_type(i1) == t1,
+            package.is_subtype(package.actual_type(i1), t1)
+        )
+    ))
+    meta_fact(ForAll(t1, Implies(
+        package.is_subtype(package.NilType, t1),
+        t1 == package.NilType
+    )))
+    meta_fact(ForAll(i1, Or(
+        Not(package.alive(i1)),
+        Or([package.actual_type(i1) == x for x in all_class_z3])
+    )))
+    meta_fact(And(
+        [package.is_abstract(i.z3()) for i in _all_classes.values() if i.abstract and i.package == package]
+        + [package.is_abstract(package.NilType)]))
+    meta_fact(ForAll(i1, Implies(
+        package.alive(i1), Not(package.is_abstract(package.actual_type(i1)))
+    )))
+    meta_fact(And(
+        [
+            package.super_type(package.NilType) == package.NilType,
+            package.actual_type(package.nil) == package.NilType,
+            Not(package.alive(package.nil))
+        ]
+    ))
 
-    meta_fact(And([is_abstract(i.z3()) for i in _all_classes.values() if i.abstract] + [is_abstract(NilType)]))
-    meta_fact(ForAll(i1, Implies(alive(i1), Not(is_abstract(actual_type(i1))))))
-
-    meta_fact(And([super_type(NilType) == NilType, actual_type(nil) == NilType, Not(alive(nil))]))
-
-    for class_ in _all_classes.values():
+    for class_ in all_relevant_classes:
         vdomain = ObjectVar(class_)
         allinst = class_.all_instances()
         for ref in class_.references.values():
@@ -872,19 +922,25 @@ def generate_meta_constraints():
 def generate_config_constraints():
 
     del _config_constraints[:]
+    for class_ in _all_classes.itervalues():
+        if class_.supertype is None:
+            generate_config_for_package(class_.package)
 
-    all_object_z3 = [i.z3() for i in _all_objects.values()] + [nil]
+def generate_config_for_package(package):
+
+    all_relevant_objects = [i for i in _all_objects.values() if i.type.package == package]
+    all_object_z3 = [i.z3() for i in all_relevant_objects] + [package.nil]
     config_fact(Distinct(*all_object_z3))
-    o1 = Const('o1', _Inst)
+    o1 = Const('o1'+package.name, package.Inst)
     config_fact(ForAll(o1, Or([o1 == i for i in all_object_z3])))
 
-    t1 = Const('t1', _Type)
+    t1 = Const('t1'+package.name, package.Type)
 
-    config_fact(And([obj.get_constant().isinstance(obj.type) for obj in _all_objects.values()]))
-    config_fact(And([obj.get_constant().alive() for obj in _all_objects.values() if not obj.suspended]))
-    config_fact(ForAll(t1, Or(t1 == NilType, Not(is_instance(nil, t1)))))
+    config_fact(And([obj.get_constant().isinstance(obj.type) for obj in all_relevant_objects]))
+    config_fact(And([obj.get_constant().alive() for obj in all_relevant_objects if not obj.suspended]))
+    config_fact(ForAll(t1, Or(t1 == package.NilType, Not(package.is_instance(package.nil, t1)))))
 
-    for name, object_ in _all_objects.items():
+    for object_ in all_relevant_objects:
         oconst = object_.get_constant()
         type_ = object_.type
         for k, v in object_.forced_values.items():
@@ -924,13 +980,14 @@ def de_quantifer_single(expr):
 def cast_object(object_, model):
     result = {}
     result['name'] = object_.name
-    result['alive'] = str(model.eval(alive(object_.z3()))) == 'True'
+    result['alive'] = str(model.eval(object_.type.package.alive(object_.z3()))) == 'True'
 
     result['type'] = None
     for class_ in _all_classes.values():
-        if str(model.eval(actual_type(object_.z3()) == class_.z3())) == 'True':
-            result['type'] = str(class_)
-            break
+        if class_.package == object_.type.package:
+            if str(model.eval(object_.type.package.actual_type(object_.z3()) == class_.z3())) == 'True':
+                result['type'] = str(class_)
+                break
 
 
     for feature in object_.type.get_all_feature_names():

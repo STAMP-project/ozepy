@@ -113,8 +113,9 @@ resultbuildimages = []
 def get_wanted(model):
     result = cast_all_objects(model)
     for i in get_all_objects():
-        if str(model.eval(wanted == i)) == 'True':
-            return result[str(i)]
+        if i.type.package == wanted.type.package:
+            if str(model.eval(wanted == i)) == 'True':
+                return result[str(i)]
 
 ampimages = dict()
 
