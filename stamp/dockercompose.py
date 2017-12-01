@@ -200,11 +200,16 @@ def generate(workingdir):
     for cst in specification['constraints']:
         solver.add(eval(cst))
 
+    maxi = specification.get('maximal', 4)
     solver.push()
-    for i in range(0, 3):
+    for i in range(0, maxi):
+        oldlen = len(covered)
         print 'In %.2f seconds.>>' % timeit.timeit(solver.check, number=1)
         print_result(solver.model(), i)
         print covered
+        if oldlen == len(covered):
+            print 'no new features can be introduced'
+            break
         solver.pop()
         solver.push()
         solver.maximize(Feature.filter(
