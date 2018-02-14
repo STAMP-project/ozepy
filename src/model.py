@@ -634,10 +634,13 @@ class SetExpr(ConsolasExpr):
 
     def __eq__(self, other):
         _consolas_assert(not isinstance(self.guard, list), '== only works on a simple set')
-        _consolas_assert(isinstance(other, list), '== only compares with a set literal (list) currently')
+        # _consolas_assert(isinstance(other, list), '== only compares with a set literal (list) currently')
 
         var = DeclareVar(self.type)
-        return And(And([self.contains(x) for x in other]), self.forall(var, Or([var == y for y in other])))
+        if isinstance(other, list):
+            return And(And([self.contains(x) for x in other]), self.forall(var, Or([var == y for y in other])))
+        elif isinstance(other, SetExpr):
+            return And(self.forall(var, other.contains(var)), other.forall(var, self.contains(var)))
 
     def __mul__(self, other):
         return self.join(other)

@@ -13,6 +13,11 @@ NSPAR = 2
 
 classes_yaml = """
 -
+  name: Variable
+-
+  name: VarValue
+  reference: [{name: variable, type: Variable, mandatory: true}]
+-
   name: Image
   abstract: True
   reference: [{name: features, type: Feature, multiple: true}]
@@ -21,7 +26,8 @@ classes_yaml = """
   supertype: Image
   reference: [
     {name: from, type: Image, mandatory: true},
-    {name: using, type: BuildRule, mandatory: true}
+    {name: using, type: BuildRule, mandatory: true},
+    {name: ival, type: VarValue, multiple: true}
   ]
 -
   name: DownloadImage
@@ -30,7 +36,8 @@ classes_yaml = """
   name: BuildRule
   reference: [
     {name: requires, type: Feature, multiple: true},
-    {name: adds, type: Feature, multiple: true}
+    {name: adds, type: Feature, multiple: true},
+    {name: rvar, type: Variable, multiple: true}
   ]
 -
   name: Feature
@@ -97,7 +104,7 @@ def require_feature_all(wanted, featurelist):
 
 classes = yaml.load(classes_yaml)
 
-Image, BuildImage, DownloadImage, BuildRule, Feature \
+Variable, VarValue, Image, BuildImage, DownloadImage, BuildRule, Feature \
     = load_all_classes(classes)
 
 generate_meta_constraints()
@@ -147,7 +154,7 @@ def print_model_deploy(model):
             newkey = newkey + v['using']
             for x in image_spec['buildingrules'][v['using']].get('depends', []):
                 dep.append(x)
-            toprint = toprint + '%s(%s) -> '%(v['name'], v['using'])
+            toprint = toprint + '%s(%s, %s) -> '%(v['name'], v['using'], v['ival'])
             chain.append({'rule': v['using']})
             v = result[v['from']]
         else:
@@ -197,7 +204,7 @@ def generate(workingdir):
     # print features
     prepare_all_sup()
 
-    print "Start search for images"
+    print "Start searching for images"
 
     with open(workingdir + '/images.yml', 'r') as stream:
         image_spec = yaml.load(stream)
@@ -217,10 +224,19 @@ def generate(workingdir):
 
     # wanted = ObjectConst(Image, 'wanted')
 
+    heapsize = DefineObject('heapsize', Variable)
+    xmx512 = DefineObject('xmx512', VarValue).force_value('variable', heapsize)
+    xmx1024 = DefineObject('xmx1024', VarValue).force_value('variable', heapsize)
+    for r in rules.values():
+        r.force_value('rvar', [heapsize])
+
     generate_config_constraints()
 
     bi1 = ObjectVar(BuildImage, 'bi1')
     bi2 = ObjectVar(BuildImage, 'bi2')
+    v1 = ObjectVar(Variable, 'v1')
+    vv1 = ObjectVar(VarValue, 'vv1')
+    vv2 = ObjectVar(VarValue, 'vv2')
     meta_facts(
         BuildImage.forall(bi1, And(
             bi1.using.requires.forall(
@@ -232,6 +248,12 @@ def generate(workingdir):
         )),
         BuildImage.forall(bi1, Not(bi1['from'] == bi1)),
         BuildImage.forall(bi1, bi1.features.exists(f1, Not(bi1['from'].features.contains(f1)))),
+        BuildImage.forall(bi1, And(
+            bi1.using.rvar.forall(v1, bi1.ival.exists(vv1, vv1.variable == v1)),
+            bi1.ival.forall(vv1, bi1.using.rvar.contains(vv1.variable)),
+            bi1.ival.forall(vv1, bi1.ival.forall(vv2, Or(vv1 == vv2, vv1.variable != vv2.variable)))
+        )),
+
         # Image.forall(e1, (e1.features * e1.features).forall(
         #     [f1, f2], Or(f1==f2, Not(Feature.exists(f3, And(f1.allsup.contains(f3), f2.allsup.contains(f3)))))
         # )),
