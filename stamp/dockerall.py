@@ -24,7 +24,10 @@ classes_yaml = """
 -
   name: Image
   abstract: True
-  reference: [{name: features, type: Feature, multiple: true}]
+  reference: [
+    {name: features, type: Feature, multiple: true},
+    {name: dep, type: Feature, multiple: true}
+  ]
 - 
   name: BuildImage
   supertype: Image
@@ -44,6 +47,13 @@ classes_yaml = """
     {name: rvar, type: Variable, multiple: true}
   ]
 -
+  name: Service
+  reference: [
+    {name: image, type: Image, mandatory: true},
+    {name: dependson, type: Service, multiple: true},
+    {name: imgfeature, type: Feature, multiple: true}
+  ]
+-
   name: Feature
   reference: [
     {name: sup, type: Feature},
@@ -52,9 +62,11 @@ classes_yaml = """
   ]
 """
 
+comp_spec = None
 features = dict()
 dimages = dict()
 rules = dict()
+services = dict()
 
 def prepare_all_sup():
     features = [fea for fea in get_all_objects() if fea.type.name == 'Feature']
@@ -108,13 +120,14 @@ def require_feature_all(wanted, featurelist):
 
 classes = yaml.load(classes_yaml)
 
-Variable, VarValue, IntValue, Image, BuildImage, DownloadImage, BuildRule, Feature \
+Variable, VarValue, IntValue, Image, BuildImage, DownloadImage, BuildRule, Service, Feature \
     = load_all_classes(classes)
 
 generate_meta_constraints()
 
 e1, e2 = ObjectVars(Image, 'e1', 'e2')
 f1, f2, f3 = ObjectVars(Feature, 'f1', 'f2', 'f3')
+s1, s2 = ObjectVars(Service, 's1', 's2')
 wanted = ObjectConst(Image, 'wanted')
 
 buildchains = []
@@ -132,6 +145,9 @@ ampimages = dict()
 
 def print_model_deploy(model):
     result = cast_all_objects(model)
+    print result
+
+def print_model_deploy_old(model):
     v = get_wanted(model)
     toprint = '\# %s: ' % v['features']
 
@@ -185,12 +201,16 @@ def print_model_deploy(model):
 covered = []
 
 def find_covered_features(model):
-    v = get_wanted(model)
-    for f in v['features']:
-        for i in get_all_objects():
-            if i.name == f and not (i in covered):
-                covered.append(i)
-    print 'features covered: %s' % covered
+    result = cast_all_objects(model)
+    current_features = []
+    for x in result:
+        if result[x]['type'] == 'Service' and result[x]['alive']:
+            img = result[result[x]['image']]
+            for fea in img['features']:
+                feaobj = get_object_by_name(fea)
+                current_features.append(str(feaobj))
+                if feaobj not in covered:
+                    covered.append(feaobj)
 
 
 def declare_feature(spec, parent):
@@ -205,8 +225,12 @@ def declare_feature(spec, parent):
 def resolve_features(featurenames):
     return [features[n] for n in featurenames]
 
+def eq_or_child(sub, sup):
+    return Or(sub == sup, sub.allsup.contains(sup))
+
 def generate(workingdir):
     global image_spec
+    global comp_spec
 
     with open(workingdir+'/features.yml', 'r') as stream:
         feature_spec = yaml.load(stream)
@@ -229,6 +253,12 @@ def generate(workingdir):
         img.force_value('requires', resolve_features(value['requires']))
         img.force_value('adds', resolve_features(value['adds']))
 
+    with open(workingdir + '/composite.yml', 'r') as stream:
+        comp_spec = yaml.load(stream)
+    for name, value in comp_spec['services'].iteritems():
+        srv = DefineObject('srv_' + name, Service, suspended=True) #not value.get('mandatory', False))
+        services[name] = srv
+        srv.force_value('imgfeature', resolve_features(value.get('imgfeature', [])))
 
     images = [DefineObject('image%d'%i, BuildImage, suspended=True) for i in range(0, NSPAR)]
 
@@ -264,12 +294,16 @@ def generate(workingdir):
             bi1.ival.forall(vv1, bi1.using.rvar.contains(vv1.variable)),
             bi1.ival.forall(vv1, bi1.ival.forall(vv2, Or(vv1 == vv2, vv1.variable != vv2.variable)))
         )),
-
-        # Image.forall(e1, (e1.features * e1.features).forall(
-        #     [f1, f2], Or(f1==f2, Not(Feature.exists(f3, And(f1.allsup.contains(f3), f2.allsup.contains(f3)))))
-        # )),
         Image.forall(e1, (e1.features * e1.features).forall(
             [f1, f2], Or(f1 == f2, Not(f1.root == f2.root))
+        )),
+        Service.forall(s1, s1.image.dep.forall(
+            f1, s1.dependson.exists(s2, s2.image.features.exists(f2, eq_or_child(f2, f1))))),
+        Service.forall(s1, Or(Feature.exists(f1, s1.image.dep.contains(f1)),
+                              Service.forall(s2, Not(s1.dependson.contains(s2))))),
+        Service.forall(s1, Not(s1.dependson.contains(s1))),
+        Service.forall(s1, s1.imgfeature.forall(
+            f1, s1.image.features.exists(f2, eq_or_child(f2, f1))
         ))
     )
 
@@ -281,13 +315,10 @@ def generate(workingdir):
     solver.add(xmxfree.value >=512)
     #----
 
-    solver.add(wanted.isinstance(Image))
-    solver.add(wanted.alive())
-
-    solver.add(require_feature_all(wanted, [features[x] for x in image_spec['mandatoryfeature']]))
-
 
     for cst in image_spec.get('constraints', []):
+        solver.add(eval(cst))
+    for cst in comp_spec['constraints']:
         solver.add(eval(cst))
 
     maxi = image_spec.get('maximal', 4)
