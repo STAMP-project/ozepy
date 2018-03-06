@@ -1,0 +1,12 @@
+composes:
+  compose1:
+    features: [postgres, ubuntu, apache, placeholder, showcase, ubuntu, postgres,
+      ubuntu, placeholder, postgres, ubuntu, apache, placeholder, showcase, ubuntu,
+      postgres, ubuntu, apache, placeholder]
+    services:
+      apache: {image: 'apache:postgres-ubuntu-latest'}
+      db: {image: 'postgres:none-ubuntu-latest'}
+      web:
+        depends_on: [apache, db]
+        image: showcaseserver:none-ubuntu-latest
+watching: [apache, web, db]

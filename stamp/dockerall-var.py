@@ -52,7 +52,8 @@ classes_yaml = """
   reference: [
     {name: image, type: Image, mandatory: true},
     {name: dependson, type: Service, multiple: true},
-    {name: imgfeature, type: Feature, multiple: true}
+    {name: imgfeature, type: Feature, multiple: true},
+    {name: sval, type: VarValue, multiple: true}
   ]
 -
   name: Feature
@@ -64,10 +65,13 @@ classes_yaml = """
 """
 
 comp_spec = None
+variable_spec = None
 features = dict()
 dimages = dict()
 rules = dict()
 services = dict()
+variables = dict()
+varvalues = dict()
 
 def prepare_all_sup():
     features = [fea for fea in get_all_objects() if fea.type.name == 'Feature']
@@ -117,7 +121,6 @@ def require_feature(w, f):
 
 def require_feature_all(wanted, featurelist):
     return And([require_feature(wanted,f) for f in featurelist])
-
 
 classes = yaml.load(classes_yaml)
 
@@ -201,6 +204,7 @@ def print_model_deploy(result, wanted):
 
 def print_result(model):
     result = cast_all_objects(model)
+    print result['image1']
     global index
     resultsrvs = dict()
     composite = {'features': current_features, 'services': resultsrvs}
@@ -260,12 +264,30 @@ def eq_or_child(sub, sup):
 def generate(workingdir):
     global image_spec
     global comp_spec
+    global variable_spec
+    global NSPAR
 
     with open(workingdir+'/features.yml', 'r') as stream:
         feature_spec = yaml.load(stream)
     declare_feature(feature_spec, None)
     # print features
     prepare_all_sup()
+
+    with open(workingdir + '/variables.yml') as stream:
+        variable_spec = yaml.load(stream)
+    for name, value in variable_spec.iteritems():
+        if name == 'constraints':
+            continue
+        variables[name] = DefineObject(name, Variable)
+        for valname, valbody in value.iteritems():
+            if(valbody['type'] == 'Int'):
+                varvalues[valname] = DefineObject(valname, IntValue)
+                if 'value' in valbody:
+                    varvalues[valname].force_value('value', int(valbody['value']))
+            else:
+                varvalues[valname] = DefineObject(valname, VarValue)
+            varvalues[valname].force_value('variable', variables[name])
+
 
     print "Start searching for images"
 
@@ -275,7 +297,8 @@ def generate(workingdir):
         img = DefineObject(name, DownloadImage)
         dimages[name] = img
         img.force_value('features', resolve_features(value['features']))
-
+    if 'maxfreebuild' in image_spec:
+        NSPAR = image_spec['maxfreebuild']
     for name, value in image_spec['buildingrules'].iteritems():
         img = DefineObject(name, BuildRule)
         rules[name] = img
@@ -289,18 +312,12 @@ def generate(workingdir):
         srv = DefineObject('srv_' + name, Service, suspended=True) #not value.get('mandatory', False))
         services[name] = srv
         srv.force_value('imgfeature', resolve_features(value.get('imgfeature', [])))
+    for name, value in comp_spec['services'].iteritems():
+        srv = services[name]
+        if 'dependson' in value:
+            srv.force_value('dependson', [services[s] for s in value['dependson']])
 
     images = [DefineObject('image%d'%i, BuildImage, suspended=True) for i in range(0, NSPAR)]
-
-    heapsize = DefineObject('heapsize', Variable)
-    xmx512 = DefineObject('xmx512', IntValue).force_value('variable', heapsize).force_value('value', 512)
-    xmx1024 = DefineObject('xmx1024', IntValue).force_value('variable', heapsize).force_value('value', 1024)
-
-    for r in rules.values():
-        if r.name.startswith("Tomcat"):
-            r.force_value('rvar', [heapsize])
-        else:
-            r.force_value('rvar', [])
 
     generate_config_constraints()
 
@@ -322,7 +339,10 @@ def generate(workingdir):
         BuildImage.forall(bi1, Not(bi1['from'] == bi1)),
         BuildImage.forall(bi1, bi1.features.exists(f1, Not(bi1['from'].features.contains(f1)))),
         BuildImage.forall(bi1, And(
-            bi1.using.rvar.forall(v1, bi1.ival.exists(vv1, vv1.variable == v1)),
+            bi1.using.rvar.forall(v1, Or(
+                bi1.ival.exists(vv1, vv1.variable == v1),
+                Service.exists(s1, And(s1.image == bi1, s1.sval.exists(vv1, vv1.variable == v1)))
+            )),
             bi1.ival.forall(vv1, bi1.using.rvar.contains(vv1.variable)),
             bi1.ival.forall(vv1, bi1.ival.forall(vv2, Or(vv1 == vv2, vv1.variable != vv2.variable)))
         )),
@@ -343,17 +363,18 @@ def generate(workingdir):
     solver.add(*get_all_meta_facts())
     solver.add(*get_all_config_facts())
 
-
-
     for cst in image_spec.get('constraints', []):
         solver.add(eval(cst))
-    for cst in comp_spec['constraints']:
+    for cst in comp_spec.get('constraints', []):
+        solver.add(eval(cst))
+    for cst in variable_spec.get('constraints', []):
         solver.add(eval(cst))
 
     maxi = image_spec.get('maximal', 4)
     solver.push()
     for i in range(0, maxi):
         oldlen = len(covered)
+        print solver.check()
         print 'Image number %d in %.2f seconds.>>' % (i, timeit.timeit(solver.check, number=1))
 
         find_covered_features(solver.model())

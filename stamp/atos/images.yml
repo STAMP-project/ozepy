@@ -1,0 +1,18 @@
+downloadimages:
+  Ubuntu:
+    features: [ubuntu]
+    name: ubuntu
+    tag: latest
+buildingrules:
+  Apache:
+    requires: [ubuntu]
+    adds: [apache, placeholder]
+    rvar: [ThreadLimit, ThreadPerChild]
+  Postgres:
+    requires: [ubuntu]
+    adds: [postgres, placeholder]
+  ShowcaseServer:
+    requires: [ubuntu]
+    adds: [showcase]
+    depends: [apache, postgres]
+maxfreebuild: 3
