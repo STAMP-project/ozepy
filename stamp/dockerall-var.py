@@ -26,7 +26,8 @@ classes_yaml = """
   abstract: True
   reference: [
     {name: features, type: Feature, multiple: true},
-    {name: dep, type: Feature, multiple: true}
+    {name: dep, type: Feature, multiple: true},
+    {name: svar, type: Variable, multiple: true}
   ]
 - 
   name: BuildImage
@@ -45,7 +46,7 @@ classes_yaml = """
     {name: depends, type: Feature, multiple: true},
     {name: requires, type: Feature, multiple: true},
     {name: adds, type: Feature, multiple: true},
-    {name: rvar, type: Variable, multiple: true}
+    {name: svar, type: Variable, multiple: true}
   ]
 -
   name: Service
@@ -115,6 +116,7 @@ def isunionf(res, set1, set2):
         set1.forall(f1, res.contains(f1)),
         set2.forall(f1, res.contains(f1))
     )
+
 
 def require_feature(w, f):
     return w.features.exists(f1, Or(f1 == f, f1.allsup.contains(f)))
@@ -257,6 +259,8 @@ def declare_feature(spec, parent):
 
 def resolve_features(featurenames):
     return [features[n] for n in featurenames]
+def resolve_variables(variablenames):
+    return [variables[n] for n in variablenames]
 
 def eq_or_child(sub, sup):
     return Or(sub == sup, sub.allsup.contains(sup))
@@ -305,6 +309,7 @@ def generate(workingdir):
         img.force_value('requires', resolve_features(value['requires']))
         img.force_value('adds', resolve_features(value['adds']))
         img.force_value('depends', resolve_features(value.get('depends', [])))
+        img.force_value('svar', resolve_variables(value.get('svar', [])))
 
     with open(workingdir + '/composite.yml', 'r') as stream:
         comp_spec = yaml.load(stream)
@@ -326,6 +331,14 @@ def generate(workingdir):
     v1 = ObjectVar(Variable, 'v1')
     vv1 = ObjectVar(VarValue, 'vv1')
     vv2 = ObjectVar(VarValue, 'vv2')
+
+    def isunionv(res, set1, set2):
+        return And(
+            res.forall(v1, Or(set1.contains(v1), set2.contains(v1))),
+            set1.forall(v1, res.contains(v1)),
+            set2.forall(v1, res.contains(v1))
+        )
+
     meta_facts(
         BuildImage.forall(bi1, And(
             bi1.using.requires.forall(
@@ -336,16 +349,14 @@ def generate(workingdir):
             isunionf(bi1.features, bi1['from'].features, bi1.using.adds),
             isunionf(bi1.dep, bi1['from'].dep, bi1.using.depends)
         )),
+        BuildImage.forall(bi1, isunionv(bi1.svar, bi1.using.svar, bi1['from'].svar)),
         BuildImage.forall(bi1, Not(bi1['from'] == bi1)),
         BuildImage.forall(bi1, bi1.features.exists(f1, Not(bi1['from'].features.contains(f1)))),
-        BuildImage.forall(bi1, And(
-            bi1.using.rvar.forall(v1, Or(
-                bi1.ival.exists(vv1, vv1.variable == v1),
-                Service.exists(s1, And(s1.image == bi1, s1.sval.exists(vv1, vv1.variable == v1)))
-            )),
-            bi1.ival.forall(vv1, bi1.using.rvar.contains(vv1.variable)),
-            bi1.ival.forall(vv1, bi1.ival.forall(vv2, Or(vv1 == vv2, vv1.variable != vv2.variable)))
-        )),
+        # BuildImage.forall(bi1, And(
+        #     bi1.using.ivar.forall(v1, bi1.ival.exists(vv1, vv1.variable == v1)),
+        #     bi1.ival.forall(vv1, bi1.using.ivar.contains(vv1.variable)),
+        #     bi1.ival.forall(vv1, bi1.ival.forall(vv2, Or(vv1 == vv2, vv1.variable != vv2.variable)))
+        # )),
         Image.forall(e1, (e1.features * e1.features).forall(
             [f1, f2], Or(f1 == f2, Not(f1.root == f2.root))
         )),
@@ -356,6 +367,11 @@ def generate(workingdir):
         Service.forall(s1, Not(s1.dependson.contains(s1))),
         Service.forall(s1, s1.imgfeature.forall(
             f1, s1.image.features.exists(f2, eq_or_child(f2, f1))
+        )),
+        Service.forall(s1, And(
+            s1.image.svar.forall(v1, s1.sval.exists(vv1, vv1.variable == v1)),
+            s1.sval.forall(vv1, s1.image.svar.contains(vv1.variable)),
+            s1.sval.forall(vv1, s1.sval.forall(vv2, Or(vv1==vv2, vv1.variable!=vv2.variable)))
         ))
     )
 

@@ -7,7 +7,7 @@ buildingrules:
   Apache:
     requires: [ubuntu]
     adds: [apache, placeholder]
-    rvar: [ThreadLimit, ThreadPerChild]
+    svar: [ThreadLimit, ThreadPerChild]
   Postgres:
     requires: [ubuntu]
     adds: [postgres, placeholder]

@@ -1,9 +1,9 @@
 images:
-  ApachePostgresUbuntu:
+  ApacheUbuntu:
     dep: []
-    features: [postgres, ubuntu, apache, placeholder]
+    features: [ubuntu, apache, placeholder]
     name: apache
-    tag: postgres-ubuntu-latest
+    tag: none-ubuntu-latest
   PostgresUbuntu:
     dep: []
     features: [postgres, ubuntu, placeholder]

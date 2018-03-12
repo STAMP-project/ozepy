@@ -7,5 +7,4 @@ services:
     imgfeature: [showcase]
 constraints:
   - services['web'].alive()
-  - BuildImage.forall(bi1, bi1.ival == [])
 
