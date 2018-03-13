@@ -1,12 +1,15 @@
 composes:
   compose1:
-    features: [ubuntu, apache, placeholder, showcase, ubuntu, postgres, ubuntu, placeholder,
-      postgres, ubuntu, apache, placeholder, showcase, postgres, ubuntu, apache, placeholder,
-      postgres, ubuntu, apache, placeholder]
+    features: [postgres, showcase, ubuntu, ubuntu, apache, postgres, showcase, ubuntu,
+      postgres, showcase, ubuntu, ubuntu, apache, postgres, showcase, ubuntu]
     services:
-      apache: {image: 'apache:none-ubuntu-latest'}
-      db: {image: 'postgres:none-ubuntu-latest'}
+      apache:
+        attribute: {ThreadLimit64: 64, ThreadPerChildFree: 0}
+        image: apache:none-ubuntu-latest
+      db:
+        depends_on: [apache, web]
+        image: postgres:showcaseserver-ubuntu-latest
       web:
         depends_on: [apache, db]
-        image: showcaseserver:none-ubuntu-latest
+        image: postgres:showcaseserver-ubuntu-latest
 watching: [apache, web, db]

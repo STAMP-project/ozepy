@@ -154,7 +154,7 @@ index = 0
 
 def print_model_deploy(result, wanted):
     v = result[wanted]
-    toprint = '\# %s: ' % v['features']
+    toprint = '#Image %s: ' % v['features']
 
     for elem in result.itervalues():
         if elem['type'] == 'VarValue':
@@ -206,7 +206,6 @@ def print_model_deploy(result, wanted):
 
 def print_result(model):
     result = cast_all_objects(model)
-    print result['image1']
     global index
     resultsrvs = dict()
     composite = {'features': current_features, 'services': resultsrvs}
@@ -227,7 +226,14 @@ def print_result(model):
             dependson = [x[4:] for x in srv['dependson']]
             if dependson:
                 resultsrvs[srvname]['depends_on'] = dependson
-            print result[obj]
+            resultvalue = result[obj]
+            resvarvalues = [x + ("(%s)" % result[x]['value'] if 'value' in result[x] else '' ) for x in resultvalue['sval']]
+            attribute = dict()
+            for x in resultvalue['sval']:
+                attribute[x] = result[x].get('value', 'None')
+            if attribute:
+                resultsrvs[srvname]['attribute'] = attribute
+            print "#Service: %s(dependson: %s, values: %s)\n" %(resultvalue['name'], resultvalue['dependson'], resvarvalues)
     index += 1
     composes['compose%d' % index] = composite
 
@@ -262,8 +268,13 @@ def resolve_features(featurenames):
 def resolve_variables(variablenames):
     return [variables[n] for n in variablenames]
 
+
 def eq_or_child(sub, sup):
     return Or(sub == sup, sub.allsup.contains(sup))
+
+
+def varconst(service, variable, vv, const):
+    return service.sval.forall(vv, Implies(vv.variable == variables[variable], const))
 
 def generate(workingdir):
     global image_spec
@@ -331,6 +342,8 @@ def generate(workingdir):
     v1 = ObjectVar(Variable, 'v1')
     vv1 = ObjectVar(VarValue, 'vv1')
     vv2 = ObjectVar(VarValue, 'vv2')
+    iv1 = ObjectVar(IntValue, 'iv1')
+    iv2 = ObjectVar(IntValue, 'iv2')
 
     def isunionv(res, set1, set2):
         return And(
@@ -390,7 +403,7 @@ def generate(workingdir):
     solver.push()
     for i in range(0, maxi):
         oldlen = len(covered)
-        print solver.check()
+        # print solver.check()
         print 'Image number %d in %.2f seconds.>>' % (i, timeit.timeit(solver.check, number=1))
 
         find_covered_features(solver.model())

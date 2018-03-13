@@ -6,13 +6,15 @@ downloadimages:
 buildingrules:
   Apache:
     requires: [ubuntu]
-    adds: [apache, placeholder]
+    adds: [apache]
     svar: [ThreadLimit, ThreadPerChild]
   Postgres:
     requires: [ubuntu]
-    adds: [postgres, placeholder]
+    adds: [postgres]
   ShowcaseServer:
     requires: [ubuntu]
     adds: [showcase]
     depends: [apache, postgres]
 maxfreebuild: 3
+constraints:
+  - BuildImage.forall(bi1, Not(And(bi1.features.contains(features['apache']), bi1.features.contains(features['postgres']))))

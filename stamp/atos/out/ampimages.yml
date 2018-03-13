@@ -1,16 +1,11 @@
 images:
   ApacheUbuntu:
     dep: []
-    features: [ubuntu, apache, placeholder]
+    features: [ubuntu, apache]
     name: apache
     tag: none-ubuntu-latest
-  PostgresUbuntu:
-    dep: []
-    features: [postgres, ubuntu, placeholder]
-    name: postgres
-    tag: none-ubuntu-latest
-  ShowcaseServerUbuntu:
+  PostgresShowcaseServerUbuntu:
     dep: [apache, postgres]
-    features: [showcase, ubuntu]
-    name: showcaseserver
-    tag: none-ubuntu-latest
+    features: [postgres, showcase, ubuntu]
+    name: postgres
+    tag: showcaseserver-ubuntu-latest

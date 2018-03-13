@@ -7,4 +7,5 @@ services:
     imgfeature: [showcase]
 constraints:
   - services['web'].alive()
+  - varconst(services['apache'], 'ThreadPerChild', iv1, varconst(services['apache'], 'ThreadLimit', iv2, iv1.value < iv2.value))
 

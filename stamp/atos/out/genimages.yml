@@ -1,13 +1,15 @@
 buildchains:
 - chain:
-  - {rule: Apache}
-  - {name: ubuntu, tag: latest}
-  features: [ubuntu, apache, placeholder]
-- chain:
+  - {rule: Postgres}
   - {rule: ShowcaseServer}
   - {name: ubuntu, tag: latest}
-  features: [showcase, ubuntu]
+  features: &id001 [postgres, showcase, ubuntu]
+- chain:
+  - {rule: Apache}
+  - {name: ubuntu, tag: latest}
+  features: [ubuntu, apache]
 - chain:
   - {rule: Postgres}
+  - {rule: ShowcaseServer}
   - {name: ubuntu, tag: latest}
-  features: [postgres, ubuntu, placeholder]
+  features: *id001
