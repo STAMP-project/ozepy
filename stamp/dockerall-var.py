@@ -204,9 +204,8 @@ def print_model_deploy(result, wanted):
     print toprint
     return ampimages[newkey]
 
-def print_result(model):
+def print_result(model, name):
     result = cast_all_objects(model)
-    global index
     resultsrvs = dict()
     composite = {'features': current_features, 'services': resultsrvs}
     for obj in result:
@@ -234,8 +233,7 @@ def print_result(model):
             if attribute:
                 resultsrvs[srvname]['attribute'] = attribute
             print "#Service: %s(dependson: %s, values: %s)\n" %(resultvalue['name'], resultvalue['dependson'], resvarvalues)
-    index += 1
-    composes['compose%d' % index] = composite
+    composes[name] = composite
 
 
 
@@ -401,25 +399,39 @@ def generate(workingdir):
 
     maxi = image_spec.get('maximal', 4)
     solver.push()
-    for i in range(0, maxi):
+    for k, v in comp_spec['outputs'].iteritems():
+        for cst in v:
+            solver.add(eval(cst))
         oldlen = len(covered)
         # print solver.check()
         print 'Image number %d in %.2f seconds.>>' % (i, timeit.timeit(solver.check, number=1))
 
         find_covered_features(solver.model())
         print current_features
-        if len(covered) == oldlen:
-            break
-        print_result(solver.model())
+        print_result(solver.model(), k)
         solver.pop()
         solver.push()
-        solver.maximize(Feature.filter(
-            f1, And(
-                And([f1 != fea for fea in covered]),
-                Service.exists(s1, s1.image.features.contains(f1))
-            )).count()
-        )
+
         print ''
+    # for i in range(0, maxi):
+    #     oldlen = len(covered)
+    #     # print solver.check()
+    #     print 'Image number %d in %.2f seconds.>>' % (i, timeit.timeit(solver.check, number=1))
+    #
+    #     find_covered_features(solver.model())
+    #     print current_features
+    #     if len(covered) == oldlen:
+    #         break
+    #     print_result(solver.model())
+    #     solver.pop()
+    #     solver.push()
+    #     solver.maximize(Feature.filter(
+    #         f1, And(
+    #             And([f1 != fea for fea in covered]),
+    #             Service.exists(s1, s1.image.features.contains(f1))
+    #         )).count()
+    #     )
+    #     print ''
     with open(workingdir + '/out/genimages.yml', 'w') as stream:
         yaml.dump({'buildchains': buildchains}, stream)
         stream.close()
