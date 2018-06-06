@@ -230,7 +230,7 @@ def generate(workingdir):
         img.force_value('adds', resolve_features(value['adds']))
 
 
-    #images = [DefineObject('image%d'%i, BuildImage, suspended=True) for i in range(0, NSPAR)]
+    images = [DefineObject('image%d'%i, BuildImage, suspended=True) for i in range(0, NSPAR)]
 
     # wanted = ObjectConst(Image, 'wanted')
 
