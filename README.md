@@ -1,4 +1,5 @@
-# consolas
+# OZEPy
+
 Z3 front-end on object-oriented systems - an Alloy-like modeller, but on an SMT solver! 
 Working with Z3-4.5.0 and above
 
