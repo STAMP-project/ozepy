@@ -22,26 +22,36 @@ class TestModelCreation(unittest.TestCase):
 
     def setUp(self):
         start_over()
+        
         self.DockerImage = DefineClass('DockerImage')
         self.Vm = DefineClass('Vm', abstract=True)
         self.SmallVm = DefineClass('SmallVm', self.Vm)
         self.LargeVm = DefineClass('LargeVm', self.Vm)
         self.Ubuntu = DefineClass('Ubuntu', self.DockerImage)
         self.Nimbus = DefineClass('Nimbus', self.Ubuntu)
+
         self.DockerImage.define_attribute('mem', IntSort())
         self.DockerImage.define_reference('deploy', self.Vm, mandatory=True)
+        self.DockerImage.define_attribute('port', IntSort())
+        
         self.Vm.define_reference('host', self.DockerImage, multiple=True, opposite='deploy')
         self.Vm.define_attribute('vmem', IntSort())
         self.Vm.define_attribute('price', IntSort())
-        self.DockerImage.define_attribute('port', IntSort())
+
+        
 
     def test_newclass(self):
         d1 = Object('d1', self.DockerImage)
+        vm1 = Object('vm1', self.Vm)
 
         self.assertEqual(self.DockerImage.attributes['mem'].z3()(d1.z3()).sort(), IntSort())
-        # Not very logical, but yes they are all _Inst
-        self.assertEqual(self.DockerImage.references['deploy'].z3()(d1.z3()).sort(), d1.z3().sort())
 
+        # Not very logical, but yes they are all _Inst
+        # self.assertEqual(self.DockerImage.references['deploy'].z3()(d1.z3()).sort(), d1.z3().sort())
+        self.assertEqual(self.DockerImage.references['deploy'].z3()(d1.z3()).sort(),
+                         vm1.z3().sort())
+
+        
     def test_reference_refers(self):
         d1 = ObjectConst(self.DockerImage, 'd1')
         self.assertEqual(d1['deploy'].z3(), self.DockerImage.references['deploy'].z3()(d1.z3()))
