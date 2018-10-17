@@ -1,3 +1,5 @@
+![GitHub tag](https://img.shields.io/github/tag/fchauvel/storage.svg)
+
 # OZEPy
 
 Z3 front-end on object-oriented systems - an Alloy-like modeller, but on an SMT solver! 
