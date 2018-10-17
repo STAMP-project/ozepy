@@ -1,4 +1,4 @@
-![GitHub tag](https://img.shields.io/github/tag/fchauvel/storage.svg)
+![GitHub tag](https://img.shields.io/github/tag/stamp-project/ozepy.svg)
 
 # OZEPy
 
