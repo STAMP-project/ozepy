@@ -850,7 +850,7 @@ def once_for_all():
 
 def generate_meta_constraints():
     del _meta_constraints[:]
-    for class_ in _all_classes.itervalues():
+    for class_ in _all_classes.values():
         if class_.supertype is None:
             generate_meta_for_package(class_.package)
 
@@ -939,7 +939,7 @@ def generate_meta_for_package(package):
 def generate_config_constraints():
 
     del _config_constraints[:]
-    for class_ in _all_classes.itervalues():
+    for class_ in _all_classes.values():
         if class_.supertype is None:
             generate_config_for_package(class_.package)
 
@@ -1021,6 +1021,3 @@ def cast_all_objects(model):
         if v['alive']:
             result[v['name']] = v
     return result
-
-
-
